@@ -18,6 +18,7 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: AddCustomerScreen(),
+      routes: {'/dashboard': (context) => const DashboardScreen()},
     );
   }
 }
