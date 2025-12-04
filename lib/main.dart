@@ -1,27 +1,33 @@
-import 'package:crm/firebase_options.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'screens/login_screen.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  runApp(const MainApp());
+  // If using Firebase, initialize here (commented out)
+  // await Firebase.initializeApp();
+  runApp(const MyApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
+      title: 'CRM',
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
-        ),
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF07142B),
+        useMaterial3: true,
       ),
+      home: const LoginScreen(),
+      routes: {
+        // add more routes later
+        '/dashboard': (context) => const Scaffold(
+              body: Center(child: Text('Dashboard (placeholder)')),
+            ),
+      },
     );
   }
 }
