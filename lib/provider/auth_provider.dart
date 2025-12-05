@@ -1,9 +1,14 @@
-
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class AuthProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // Correct constructor with scopes
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email'],
+  );
 
   User? _user;
   User? get user => _user;
@@ -20,36 +25,26 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String?> signUp(String email, String password) async {
+  Future<String?> signInWithGoogle() async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      return null; // Success
-    } on FirebaseAuthException catch (e) {
-      return e.message; // Return error
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
+      final googleUser = await _googleSignIn.signIn(); // signIn() exists in 7.x
 
-  Future<String?> login(String email, String password) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
+      if (googleUser == null) return "Google Sign-In cancelled";
 
-      await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
+      final googleAuth = await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+        // accessToken removed because getter may not exist
       );
+
+      await _auth.signInWithCredential(credential);
       return null;
-    } on FirebaseAuthException catch (e) {
-      return e.message;
+    } catch (e) {
+      return e.toString();
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -58,5 +53,6 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> logout() async {
     await _auth.signOut();
+    await _googleSignIn.signOut();
   }
 }
