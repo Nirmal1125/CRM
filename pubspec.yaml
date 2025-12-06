@@ -22,6 +22,9 @@ dependencies:
   google_fonts: ^5.0.0
   flutter_svg: ^2.0.7
 
+  # Utility
+  uuid: ^3.0.7
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -33,3 +36,4 @@ flutter:
   assets:
     - assets/illustration.png
     - assets/google_logo.png
+    - assets/signup_art.png
