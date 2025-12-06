@@ -306,7 +306,8 @@ class _LoginScreenState extends State<LoginScreen>
             Text('New on our Platform?',
                 style: TextStyle(color: Colors.white.withOpacity(0.7))),
             TextButton(
-              onPressed: () {},
+              // NAVIGATE to Sign Up screen
+              onPressed: () => Navigator.pushNamed(context, '/signup'),
               child: const Text('Create an Account'),
             ),
           ]),
@@ -317,8 +318,7 @@ class _LoginScreenState extends State<LoginScreen>
             Expanded(child: Divider(color: Colors.white.withOpacity(0.08))),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: Text('or',
-                  style: TextStyle(color: Colors.white.withOpacity(0.6))),
+              child: Text('or', style: TextStyle(color: Colors.white.withOpacity(0.6))),
             ),
             Expanded(child: Divider(color: Colors.white.withOpacity(0.08))),
           ]),
@@ -344,8 +344,8 @@ class _LoginScreenState extends State<LoginScreen>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(
-                        _isHoveringGoogle ? 0.12 : 0.08),
+                    color:
+                        Colors.white.withOpacity(_isHoveringGoogle ? 0.12 : 0.08),
                     borderRadius: BorderRadius.circular(40),
                     border: Border.all(color: Colors.white.withOpacity(0.12)),
                     boxShadow: _isHoveringGoogle
