@@ -1,6 +1,8 @@
 // lib/screens/signup_screen.dart
+import 'package:crm/provider/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -29,16 +31,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  void _onSignUp() {
-    if (!_formKey.currentState!.validate()) return;
+ void _onSignUp() async {
+  if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
-    // simulate sign-up; replace with real logic
-    Future.delayed(const Duration(seconds: 2), () {
-      setState(() => _isLoading = false);
-      Navigator.pushReplacementNamed(context, '/customers'); // or '/dashboard'
-    });
+  final auth = Provider.of<AuthProvider>(context, listen: false);
+
+  final result = await auth.signUpWithEmail(
+    _nameCtrl.text.trim(),
+    _emailCtrl.text.trim(),
+    _passwordCtrl.text.trim(),
+  );
+
+  if (result != null) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
+  } else {
+    Navigator.pushReplacementNamed(context, '/dashboard');
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -295,9 +305,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   scale: _isHoveringGoogle ? 1.07 : 1.0,
                   duration: const Duration(milliseconds: 200),
                   child: GestureDetector(
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Google sign-up tapped')));
-                    },
+                   onTap: () async {
+                   final auth = Provider.of<AuthProvider>(context, listen: false);
+                    final result = await auth.signInWithGoogle();
+
+                 if (result != null) {
+                     ScaffoldMessenger.of(context).showSnackBar(
+                       SnackBar(content: Text(result)),
+           );
+             } else {
+                 Navigator.pushReplacementNamed(context, '/dashboard');
+                      }
+                      },
+
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),

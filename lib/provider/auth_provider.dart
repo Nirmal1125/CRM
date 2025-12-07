@@ -51,6 +51,40 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+Future<String?> signInWithEmail(String email, String password) async {
+  try {
+    _isLoading = true;
+    notifyListeners();
+
+    await _auth.signInWithEmailAndPassword(email: email, password: password);
+    return null;
+  } on FirebaseAuthException catch (e) {
+    return e.message;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
+
+Future<String?> signUpWithEmail(String name, String email, String password) async {
+  try {
+    _isLoading = true;
+    notifyListeners();
+
+    await _auth.createUserWithEmailAndPassword(email: email, password: password);
+
+    // store user name
+    await _auth.currentUser!.updateDisplayName(name);
+    return null;
+  } on FirebaseAuthException catch (e) {
+    return e.message;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
+
+
   Future<void> logout() async {
     await _auth.signOut();
     await _googleSignIn.signOut();

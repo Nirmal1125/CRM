@@ -1,6 +1,8 @@
 
+import 'package:crm/provider/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -29,16 +31,22 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  void _onLoginPressed() {
-    if (!_formKey.currentState!.validate()) return;
+  void _onLoginPressed() async {
+  if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+  final auth = Provider.of<AuthProvider>(context, listen: false);
 
-    Future.delayed(const Duration(seconds: 2), () {
-      setState(() => _isLoading = false);
-      Navigator.pushReplacementNamed(context, '/dashboard');
-    });
+  final result = await auth.signInWithEmail(
+    _usernameCtrl.text.trim(),
+    _passwordCtrl.text.trim(),
+  );
+
+  if (result != null) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
+  } else {
+    Navigator.pushReplacementNamed(context, '/dashboard');
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -335,11 +343,19 @@ class _LoginScreenState extends State<LoginScreen>
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
               child: GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Google sign-in tapped')),
-                  );
-                },
+                onTap: () async {
+                    final auth = Provider.of<AuthProvider>(context, listen: false);
+                        final result = await auth.signInWithGoogle();
+
+                       if (result != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(result)),
+                        );
+                    } else {
+                  Navigator.pushReplacementNamed(context, '/dashboard');
+                     }
+                  },
+                  
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding:
