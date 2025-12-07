@@ -1,5 +1,7 @@
 import 'package:crm/firebase_options.dart';
 import 'package:crm/screen/add_customer_screen.dart';
+import 'package:crm/screen/add_lead_screen.dart';
+import 'package:crm/screen/customer_list_screen.dart';
 import 'package:crm/screen/dashboard_ui.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -17,7 +19,7 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: AddCustomerScreen(),
+      home: DashboardScreen(),
       routes: {'/dashboard': (context) => const DashboardScreen()},
     );
   }

@@ -1,44 +1,59 @@
+// lib/screens/add_lead_screen.dart
 import 'package:flutter/material.dart';
-import '../services/customer_service.dart';
+import '../services/lead_service.dart';
 
-class AddCustomerScreen extends StatefulWidget {
-  final String? customerId;
+class AddLeadScreen extends StatefulWidget {
+  final String? leadId;
   final Map<String, dynamic>? initialData;
 
-  const AddCustomerScreen({super.key, this.customerId, this.initialData});
+  const AddLeadScreen({super.key, this.leadId, this.initialData});
 
   @override
-  State<AddCustomerScreen> createState() => _AddCustomerScreenState();
+  State<AddLeadScreen> createState() => _AddLeadScreenState();
 }
 
-class _AddCustomerScreenState extends State<AddCustomerScreen> {
+class _AddLeadScreenState extends State<AddLeadScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _service = CustomerService();
+  final _service = LeadService();
 
-  late TextEditingController _name;
-  late TextEditingController _email;
-  late TextEditingController _phone;
-  late TextEditingController _company;
+  late TextEditingController _title;
+  late TextEditingController _value;
+  late TextEditingController _customerId;
+
+  String _status = 'New';
+  String _source = 'Website';
 
   bool _isSaving = false;
+
+  final _statusOptions = const ['New', 'In Progress', 'Won', 'Lost'];
+  final _sourceOptions = const [
+    'Website',
+    'Call',
+    'Referral',
+    'Email',
+    'Other',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _name = TextEditingController(text: widget.initialData?['name'] ?? '');
-    _email = TextEditingController(text: widget.initialData?['email'] ?? '');
-    _phone = TextEditingController(text: widget.initialData?['phone'] ?? '');
-    _company = TextEditingController(
-      text: widget.initialData?['company'] ?? '',
+    _title = TextEditingController(text: widget.initialData?['title'] ?? '');
+    _value = TextEditingController(
+      text: widget.initialData?['value']?.toString() ?? '',
     );
+    _customerId = TextEditingController(
+      text: widget.initialData?['customerId'] ?? '',
+    );
+
+    _status = widget.initialData?['status'] ?? 'New';
+    _source = widget.initialData?['source'] ?? 'Website';
   }
 
   @override
   void dispose() {
-    _name.dispose();
-    _email.dispose();
-    _phone.dispose();
-    _company.dispose();
+    _title.dispose();
+    _value.dispose();
+    _customerId.dispose();
     super.dispose();
   }
 
@@ -48,20 +63,27 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     setState(() => _isSaving = true);
 
     try {
-      if (widget.customerId == null) {
-        await _service.addCustomer(
-          name: _name.text.trim(),
-          email: _email.text.trim(),
-          phone: _phone.text.trim(),
-          company: _company.text.trim(),
+      final double? parsedValue =
+          _value.text.trim().isEmpty
+              ? null
+              : double.tryParse(_value.text.trim());
+
+      if (widget.leadId == null) {
+        await _service.addLead(
+          title: _title.text.trim(),
+          status: _status,
+          source: _source,
+          customerId: _customerId.text.trim(),
+          value: parsedValue,
         );
       } else {
-        await _service.updateCustomer(
-          widget.customerId!,
-          name: _name.text.trim(),
-          email: _email.text.trim(),
-          phone: _phone.text.trim(),
-          company: _company.text.trim(),
+        await _service.updateLead(
+          widget.leadId!,
+          title: _title.text.trim(),
+          status: _status,
+          source: _source,
+          customerId: _customerId.text.trim(),
+          value: parsedValue,
         );
       }
 
@@ -69,7 +91,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Failed to save: $e')));
+      ).showSnackBar(SnackBar(content: Text('Failed to save lead: $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -86,7 +108,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFE4E1EC)),
+        borderSide: const BorderSide(color: Color.fromARGB(255, 244, 243, 245)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -94,10 +116,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: Color(0xFF3F51B5), // Indigo focus color
-          width: 1.4,
-        ),
+        borderSide: const BorderSide(color: Color(0xFF3F51B5), width: 1.4),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -106,18 +125,43 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     );
   }
 
+  Widget _buildDropdownField({
+    required String label,
+    required String value,
+    required List<String> options,
+    required void Function(String?) onChanged,
+  }) {
+    return InputDecorator(
+      decoration: _fieldDecoration(label, ''),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          onChanged: onChanged,
+          items:
+              options
+                  .map(
+                    (opt) =>
+                        DropdownMenuItem<String>(value: opt, child: Text(opt)),
+                  )
+                  .toList(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isEdit = widget.customerId != null;
+    final isEdit = widget.leadId != null;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F4F8), // light CRM gray
+      backgroundColor: const Color(0xFFF4F4F8),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
-        title: const Text(
-          'Add Customer',
-          style: TextStyle(color: Color(0xFF262626)),
+        title: Text(
+          isEdit ? 'Edit Lead' : 'Add Lead',
+          style: const TextStyle(color: Color(0xFF262626)),
         ),
         foregroundColor: const Color(0xFF262626),
       ),
@@ -128,7 +172,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             constraints: const BoxConstraints(maxWidth: 550),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              color: const Color(0xFFF8F9FF), // light indigo-tint card
+              color: const Color(0xFFF8F9FF), // light indigo tint
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.03),
@@ -144,9 +188,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Add new customer",
-                      style: TextStyle(
+                    Text(
+                      isEdit ? "Edit lead" : "Add new lead",
+                      style: const TextStyle(
                         fontSize: 21,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF262626),
@@ -154,47 +198,61 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      "Fill in the customer details below.",
+                      "Fill in the lead details below.",
                       style: TextStyle(fontSize: 13, color: Color(0xFF6D6D6D)),
                     ),
                     const SizedBox(height: 28),
 
                     TextFormField(
-                      controller: _name,
+                      controller: _title,
                       decoration: _fieldDecoration(
-                        "Customer name",
-                        "E.g. John Doe",
+                        "Lead title",
+                        "E.g. Website enquiry",
                       ),
                       validator:
-                          (v) => v == null || v.isEmpty ? "Enter name" : null,
+                          (v) => v == null || v.isEmpty ? "Enter title" : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildDropdownField(
+                      label: "Status",
+                      value: _status,
+                      options: _statusOptions,
+                      onChanged: (val) {
+                        if (val == null) return;
+                        setState(() => _status = val);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildDropdownField(
+                      label: "Source",
+                      value: _source,
+                      options: _sourceOptions,
+                      onChanged: (val) {
+                        if (val == null) return;
+                        setState(() => _source = val);
+                      },
                     ),
                     const SizedBox(height: 16),
 
                     TextFormField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
+                      controller: _value,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: _fieldDecoration(
-                        "Email",
-                        "customer@example.com",
+                        "Value (optional)",
+                        "E.g. 50000",
                       ),
                     ),
                     const SizedBox(height: 16),
 
                     TextFormField(
-                      controller: _phone,
-                      keyboardType: TextInputType.phone,
+                      controller: _customerId,
                       decoration: _fieldDecoration(
-                        "Phone",
-                        "E.g. +91 98765 43210",
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _company,
-                      decoration: _fieldDecoration(
-                        "Company",
-                        "E.g. Acme Pvt Ltd",
+                        "Customer ID (optional)",
+                        "Can link to a customer later",
                       ),
                     ),
 
@@ -209,7 +267,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                   ? null
                                   : () => Navigator.of(context).pop(),
                           style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF3F51B5), // Indigo
+                            foregroundColor: const Color(0xFF3F51B5),
                           ),
                           child: const Text("Cancel"),
                         ),
@@ -217,7 +275,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                         ElevatedButton(
                           onPressed: _isSaving ? null : _save,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF3F51B5), // Indigo
+                            backgroundColor: const Color(0xFF3F51B5),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 24,
                               vertical: 14,
@@ -238,7 +296,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                     ),
                                   )
                                   : Text(
-                                    isEdit ? "Save changes" : "Add customer",
+                                    isEdit ? "Save changes" : "Add lead",
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 14,
