@@ -16,5 +16,7 @@ class FirestoreService {
     await _db.doc(id).delete();
   }
 
+  static Stream<QuerySnapshot<Object?>>? getCustomersStream() {}
+
   // Fetch methods for A (e.g., Stream<List<Customer>> getCustomers() { ... })
 }
