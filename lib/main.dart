@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'package:crm/firebase_options.dart';
 import 'package:crm/provider/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +10,9 @@ import 'screens/customer_list_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(); // Firebase initialization
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  ); // Firebase initialization
   runApp(const MyApp());
 }
 
@@ -51,18 +54,21 @@ class _MyAppState extends State<MyApp> {
       iconTheme: const IconThemeData(color: Colors.white70),
     );
 
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
-      ],
-      child: MaterialApp(
+   return MultiProvider(
+  providers: [
+    ChangeNotifierProvider<AuthProvider>(
+      create: (_) => AuthProvider()..initialize(),
+    ),
+  ],
+        child: MaterialApp(
+
         title: 'CRM',
         debugShowCheckedModeBanner: false,
         theme: light,
         darkTheme: dark,
         themeMode: _isDark ? ThemeMode.dark : ThemeMode.light,
 
-        initialRoute: '/customers', // dev testing
+        initialRoute: '/', // dev testing
 
         routes: {
           '/': (context) => const LoginScreen(),

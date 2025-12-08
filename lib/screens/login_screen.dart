@@ -1,4 +1,3 @@
-
 import 'package:crm/provider/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -21,7 +20,6 @@ class _LoginScreenState extends State<LoginScreen>
   bool _rememberMe = false;
   bool _isLoading = false;
 
-  // Hover animation vars
   bool _isHoveringGoogle = false;
 
   @override
@@ -32,21 +30,24 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _onLoginPressed() async {
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
-  final auth = Provider.of<AuthProvider>(context, listen: false);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
 
-  final result = await auth.signInWithEmail(
-    _usernameCtrl.text.trim(),
-    _passwordCtrl.text.trim(),
-  );
+    // 🔥 Modified here → login using username instead of email
+    final result = await auth.loginWithUsername(
+      _usernameCtrl.text.trim(),
+      _passwordCtrl.text.trim(),
+    );
 
-  if (result != null) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
-  } else {
-    Navigator.pushReplacementNamed(context, '/dashboard');
+    if (result != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result)),
+      );
+    } else {
+      Navigator.pushReplacementNamed(context, '/dashboard');
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -111,9 +112,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ),
-
         const SizedBox(width: 28),
-
         Expanded(
           flex: 4,
           child: _buildLoginCard(context),
@@ -185,7 +184,6 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
           ]),
-
           const SizedBox(height: 24),
 
           Align(
@@ -315,7 +313,6 @@ class _LoginScreenState extends State<LoginScreen>
             Text('New on our Platform?',
                 style: TextStyle(color: Colors.white.withOpacity(0.7))),
             TextButton(
-              // NAVIGATE to Sign Up screen
               onPressed: () => Navigator.pushNamed(context, '/signup'),
               child: const Text('Create an Account'),
             ),
@@ -334,7 +331,6 @@ class _LoginScreenState extends State<LoginScreen>
 
           const SizedBox(height: 14),
 
-          // ⭐ GOOGLE BUTTON WITH HOVER ANIMATION ⭐
           MouseRegion(
             onEnter: (_) => setState(() => _isHoveringGoogle = true),
             onExit: (_) => setState(() => _isHoveringGoogle = false),
@@ -344,18 +340,17 @@ class _LoginScreenState extends State<LoginScreen>
               curve: Curves.easeOut,
               child: GestureDetector(
                 onTap: () async {
-                    final auth = Provider.of<AuthProvider>(context, listen: false);
-                        final result = await auth.signInWithGoogle();
+                  final auth = Provider.of<AuthProvider>(context, listen: false);
+                  final result = await auth.signInWithGoogle();
 
-                       if (result != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                  if (result != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(result)),
-                        );
-                    } else {
-                  Navigator.pushReplacementNamed(context, '/dashboard');
-                     }
-                  },
-                  
+                    );
+                  } else {
+                    Navigator.pushReplacementNamed(context, '/dashboard');
+                  }
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding:
