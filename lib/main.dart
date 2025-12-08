@@ -48,7 +48,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        // Add other providers here as needed
+      ], 
+    
+    child:MaterialApp(
       title: 'CRM',
       debugShowCheckedModeBanner: false,
       // Force light theme as requested
@@ -67,6 +73,7 @@ class MyApp extends StatelessWidget {
 
         '/leads': (context) => const LeadsListScreen(),
       },
+    ),
     );
   }
 }
