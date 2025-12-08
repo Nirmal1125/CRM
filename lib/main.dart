@@ -10,7 +10,7 @@ void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   // ------------------------------
@@ -41,28 +41,6 @@ class MyApp extends StatefulWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData light = ThemeData(
-      brightness: Brightness.light,
-      scaffoldBackgroundColor: Colors.white,
-      primarySwatch: Colors.indigo,
-      useMaterial3: true,
-      cardColor: Colors.white,
-      colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.indigo)
-          .copyWith(secondary: Colors.indigoAccent),
-      textTheme: ThemeData.light().textTheme,
-      iconTheme: const IconThemeData(color: Colors.black87),
-    );
-
-    final ThemeData dark = ThemeData(
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: const Color(0xFF07142B),
-      primaryColor: Colors.indigo,
-      useMaterial3: true,
-      cardColor: const Color(0xFF121217),
-      textTheme: ThemeData.dark().textTheme,
-      iconTheme: const IconThemeData(color: Colors.white70),
-    );
-
     return MaterialApp(
       title: 'CRM',
       debugShowCheckedModeBanner: false,
