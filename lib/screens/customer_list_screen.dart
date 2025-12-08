@@ -5,9 +5,7 @@ import 'package:flutter/services.dart';
 import '../models/customer.dart';
 
 class CustomerListScreen extends StatefulWidget {
-  final VoidCallback? onToggleTheme;
-  final bool isDark;
-  const CustomerListScreen({Key? key, this.onToggleTheme, required this.isDark}) : super(key: key);
+  const CustomerListScreen({Key? key}) : super(key: key);
 
   @override
   State<CustomerListScreen> createState() => _CustomerListScreenState();
@@ -39,7 +37,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     super.dispose();
   }
 
-  // Debounced search (200ms)
   void _onSearchChangedDebounced() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 200), () {
@@ -67,7 +64,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     _filtered.sort((a, b) => _sortAsc ? a.name.compareTo(b.name) : b.name.compareTo(a.name));
   }
 
-  // Selection
   void _toggleSelectAll(bool? v) {
     setState(() {
       _selectAll = v ?? false;
@@ -86,7 +82,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     });
   }
 
-  // Bulk delete
   void _deleteSelected() {
     final count = _selectedIds.length;
     if (count == 0) return;
@@ -137,7 +132,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selected CSV copied to clipboard')));
   }
 
-  // Import (paste CSV)
   void _onImport() async {
     final textController = TextEditingController();
     await showDialog(
@@ -199,7 +193,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Imported $added customers')));
   }
 
-  // Export all filtered
   void _onExport() {
     final header = 'name,email,phone,status,city,orders,amountSpent';
     final rows = _filtered.map((c) {
@@ -218,11 +211,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     Clipboard.setData(ClipboardData(text: csv));
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('CSV copied to clipboard')));
   }
-
-  // -----------------------
-  // Add/Edit handling:
-  // Try to navigate to '/add-customer' route; if push fails (no route), show external dialog.
-  // -----------------------
 
   Future<void> _showExternalAddDialog({String mode = 'Add', Customer? customer}) async {
     const csvTemplate = 'name,email,phone,status,city\nJohn Doe,john@example.com,9876543210,Lead,City';
@@ -252,7 +240,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     );
   }
 
-  // Attempt to open add-customer route; fallback to dialog if route missing
   Future<void> _openAddCustomer({Customer? prefill, bool isEdit = false}) async {
     try {
       final result = await Navigator.pushNamed(context, '/add-customer', arguments: prefill);
@@ -296,7 +283,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     }
   }
 
-  // Edit: attempt route, otherwise fallback to dialog
   Future<void> _onEdit(Customer c) async {
     try {
       final result = await Navigator.pushNamed(context, '/add-customer', arguments: c);
@@ -374,7 +360,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     });
   }
 
-  // filter sheet method
   void _openFilterSheet() {
     showModalBottomSheet(
       context: context,
@@ -416,7 +401,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     );
   }
 
-  // Build UI (responsive)
   @override
   Widget build(BuildContext context) {
     final screenW = MediaQuery.of(context).size.width;
@@ -431,18 +415,13 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 28.0),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // HEADER: title + constrained actions (prevents overflow)
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Title area - allows shrinking
                 Expanded(
                   child: Text('Customers', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
                 ),
-
                 const SizedBox(width: 12),
-
-                // Actions: constrained to half of available width and horizontally scrollable
                 ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: screenW * 0.5),
                   child: SingleChildScrollView(
@@ -455,7 +434,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                         const SizedBox(width: 12),
                         Tooltip(message: 'Add new customer', child: ElevatedButton(onPressed: () => _openAddCustomer(), child: const Text('Add Customers'))),
                         const SizedBox(width: 12),
-                        IconButton(tooltip: widget.isDark ? 'Switch to Light' : 'Switch to Dark', onPressed: widget.onToggleTheme, icon: Icon(widget.isDark ? Icons.wb_sunny_outlined : Icons.dark_mode_outlined)),
+                        // theme toggle removed on purpose
                       ],
                     ),
                   ),
@@ -640,7 +619,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     );
   }
 
-  // Dummy data
   List<Customer> _buildDummyData() {
     return [
       Customer(id: '1', name: 'Esther Howard', phone: '+91 98765 43210', email: 'esther@example.com', status: 'Subscribed', city: 'Great Falls, Maryland', orders: '2 Orders', amountSpent: '\$250.00'),
