@@ -1,4 +1,3 @@
-// lib/screens/add_lead_screen.dart
 import 'package:flutter/material.dart';
 import '../services/lead_service.dart';
 
@@ -16,9 +15,14 @@ class _AddLeadScreenState extends State<AddLeadScreen> {
   final _formKey = GlobalKey<FormState>();
   final _service = LeadService();
 
-  late TextEditingController _title;
-  late TextEditingController _value;
-  late TextEditingController _customerId;
+  late TextEditingController _name;
+  late TextEditingController _company;
+  late TextEditingController _email;
+  late TextEditingController _phone;
+  late TextEditingController _assignedTo;
+  late TextEditingController _notes;
+  late TextEditingController _tags;
+  late TextEditingController _score;
 
   String _status = 'New';
   String _source = 'Website';
@@ -37,13 +41,27 @@ class _AddLeadScreenState extends State<AddLeadScreen> {
   @override
   void initState() {
     super.initState();
-    _title = TextEditingController(text: widget.initialData?['title'] ?? '');
-    _value = TextEditingController(
-      text: widget.initialData?['value']?.toString() ?? '',
-    );
-    _customerId = TextEditingController(
-      text: widget.initialData?['customerId'] ?? '',
-    );
+    _name = TextEditingController(text: widget.initialData?['name'] ?? '');
+    _company =
+        TextEditingController(text: widget.initialData?['company'] ?? '');
+    _email =
+        TextEditingController(text: widget.initialData?['email'] ?? '');
+    _phone =
+        TextEditingController(text: widget.initialData?['phone'] ?? '');
+    _assignedTo =
+        TextEditingController(text: widget.initialData?['assignedTo'] ?? '');
+    _notes =
+        TextEditingController(text: widget.initialData?['notes'] ?? '');
+    _tags =
+        TextEditingController(
+          text: (widget.initialData?['tags'] as List?)
+                  ?.join(', ') ??
+              '',
+        );
+    _score =
+        TextEditingController(
+          text: widget.initialData?['score']?.toString() ?? '',
+        );
 
     _status = widget.initialData?['status'] ?? 'New';
     _source = widget.initialData?['source'] ?? 'Website';
@@ -51,9 +69,14 @@ class _AddLeadScreenState extends State<AddLeadScreen> {
 
   @override
   void dispose() {
-    _title.dispose();
-    _value.dispose();
-    _customerId.dispose();
+    _name.dispose();
+    _company.dispose();
+    _email.dispose();
+    _phone.dispose();
+    _assignedTo.dispose();
+    _notes.dispose();
+    _tags.dispose();
+    _score.dispose();
     super.dispose();
   }
 
@@ -63,35 +86,50 @@ class _AddLeadScreenState extends State<AddLeadScreen> {
     setState(() => _isSaving = true);
 
     try {
-      final double? parsedValue =
-          _value.text.trim().isEmpty
-              ? null
-              : double.tryParse(_value.text.trim());
+      final tagsList =
+          _tags.text
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList();
+
+      final scoreValue =
+          _score.text.isNotEmpty ? int.tryParse(_score.text) : null;
 
       if (widget.leadId == null) {
         await _service.addLead(
-          title: _title.text.trim(),
+          name: _name.text.trim(),
+          company: _company.text.trim(),
+          email: _email.text.trim(),
+          phone: _phone.text.trim(),
           status: _status,
           source: _source,
-          customerId: _customerId.text.trim(),
-          value: parsedValue,
+          assignedTo: _assignedTo.text.trim(),
+          notes: _notes.text.trim(),
+          tags: tagsList,
+          score: scoreValue,
         );
       } else {
         await _service.updateLead(
           widget.leadId!,
-          title: _title.text.trim(),
+          name: _name.text.trim(),
+          company: _company.text.trim(),
+          email: _email.text.trim(),
+          phone: _phone.text.trim(),
           status: _status,
           source: _source,
-          customerId: _customerId.text.trim(),
-          value: parsedValue,
+          assignedTo: _assignedTo.text.trim(),
+          notes: _notes.text.trim(),
+          tags: tagsList,
+          score: scoreValue,
         );
       }
 
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to save lead: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save lead: $e')),
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -100,28 +138,12 @@ class _AddLeadScreenState extends State<AddLeadScreen> {
   InputDecoration _fieldDecoration(String label, String hint) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF5F5F5F)),
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF9A9A9A)),
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color.fromARGB(255, 244, 243, 245)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFE4E1EC)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF3F51B5), width: 1.4),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red),
-      ),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 
@@ -142,7 +164,10 @@ class _AddLeadScreenState extends State<AddLeadScreen> {
               options
                   .map(
                     (opt) =>
-                        DropdownMenuItem<String>(value: opt, child: Text(opt)),
+                        DropdownMenuItem<String>(
+                          value: opt,
+                          child: Text(opt),
+                        ),
                   )
                   .toList(),
         ),
@@ -157,159 +182,96 @@ class _AddLeadScreenState extends State<AddLeadScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F4F8),
       appBar: AppBar(
-        elevation: 0,
         backgroundColor: Colors.white,
-        title: Text(
-          isEdit ? 'Edit Lead' : 'Add Lead',
-          style: const TextStyle(color: Color(0xFF262626)),
-        ),
-        foregroundColor: const Color(0xFF262626),
+        title: Text(isEdit ? 'Edit Lead' : 'Add Lead'),
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 550),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: const Color(0xFFF8F9FF), // light indigo tint
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isEdit ? "Edit lead" : "Add new lead",
-                      style: const TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF262626),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      "Fill in the lead details below.",
-                      style: TextStyle(fontSize: 13, color: Color(0xFF6D6D6D)),
-                    ),
-                    const SizedBox(height: 28),
-
-                    TextFormField(
-                      controller: _title,
-                      decoration: _fieldDecoration(
-                        "Lead title",
-                        "E.g. Website enquiry",
-                      ),
-                      validator:
-                          (v) => v == null || v.isEmpty ? "Enter title" : null,
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildDropdownField(
-                      label: "Status",
-                      value: _status,
-                      options: _statusOptions,
-                      onChanged: (val) {
-                        if (val == null) return;
-                        setState(() => _status = val);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildDropdownField(
-                      label: "Source",
-                      value: _source,
-                      options: _sourceOptions,
-                      onChanged: (val) {
-                        if (val == null) return;
-                        setState(() => _source = val);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _value,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: _fieldDecoration(
-                        "Value (optional)",
-                        "E.g. 50000",
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _customerId,
-                      decoration: _fieldDecoration(
-                        "Customer ID (optional)",
-                        "Can link to a customer later",
-                      ),
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed:
-                              _isSaving
-                                  ? null
-                                  : () => Navigator.of(context).pop(),
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF3F51B5),
-                          ),
-                          child: const Text("Cancel"),
-                        ),
-                        const SizedBox(width: 10),
-                        ElevatedButton(
-                          onPressed: _isSaving ? null : _save,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF3F51B5),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 14,
-                            ),
-                            shape: const StadiumBorder(),
-                            elevation: 0,
-                          ),
-                          child:
-                              _isSaving
-                                  ? const SizedBox(
-                                    height: 18,
-                                    width: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  )
-                                  : Text(
-                                    isEdit ? "Save changes" : "Add lead",
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _name,
+                decoration:
+                    _fieldDecoration('Lead title', 'Website enquiry'),
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Enter title' : null,
               ),
-            ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _company,
+                decoration:
+                    _fieldDecoration('Company', 'Acme Pvt Ltd'),
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _email,
+                decoration:
+                    _fieldDecoration('Email', 'lead@example.com'),
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _phone,
+                decoration:
+                    _fieldDecoration('Phone', '+91 98765 43210'),
+              ),
+              const SizedBox(height: 16),
+
+              _buildDropdownField(
+                label: 'Status',
+                value: _status,
+                options: _statusOptions,
+                onChanged: (v) => setState(() => _status = v!),
+              ),
+              const SizedBox(height: 16),
+
+              _buildDropdownField(
+                label: 'Source',
+                value: _source,
+                options: _sourceOptions,
+                onChanged: (v) => setState(() => _source = v!),
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _assignedTo,
+                decoration:
+                    _fieldDecoration('Assigned to', 'Sales agent'),
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _score,
+                keyboardType: TextInputType.number,
+                decoration:
+                    _fieldDecoration('Score', 'Optional'),
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _tags,
+                decoration:
+                    _fieldDecoration('Tags', 'hot, priority'),
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _notes,
+                maxLines: 3,
+                decoration:
+                    _fieldDecoration('Notes', 'Additional details'),
+              ),
+              const SizedBox(height: 24),
+
+              ElevatedButton(
+                onPressed: _isSaving ? null : _save,
+                child: Text(isEdit ? 'Save changes' : 'Add lead'),
+              ),
+            ],
           ),
         ),
       ),

@@ -2,6 +2,9 @@ import 'package:crm/provider/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart';
+import 'package:crm/utils/responsive.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,11 +18,11 @@ class _LoginScreenState extends State<LoginScreen>
   final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  
 
   bool _isPasswordVisible = false;
   bool _rememberMe = false;
   bool _isLoading = false;
-
   bool _isHoveringGoogle = false;
 
   @override
@@ -29,30 +32,30 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  void _onLoginPressed() async {
-    if (!_formKey.currentState!.validate()) return;
+ Future<void> _onLoginPressed() async {
+  if (!_formKey.currentState!.validate()) return;
 
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-
-    // 🔥 Modified here → login using username instead of email
-    final result = await auth.loginWithUsername(
-      _usernameCtrl.text.trim(),
-      _passwordCtrl.text.trim(),
+  final auth = Provider.of<AuthProvider>(context, listen: false);
+  final result = await auth.loginWithUsername(
+    _usernameCtrl.text.trim(),
+    _passwordCtrl.text.trim(),
+  );
+if (!mounted) return;
+  if (result != null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result)),
     );
-
-    if (result != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result)),
-      );
-    } else {
-      Navigator.pushReplacementNamed(context, '/dashboard');
-    }
+  } else {
+    if(! mounted) return;
+    Navigator.pushReplacementNamed(context, '/dashboard');
   }
+}
+
+
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isWide = size.width >= 900;
+final isDesktop = Responsive.isDesktop(context);
 
     return Scaffold(
       body: SafeArea(
@@ -74,8 +77,10 @@ class _LoginScreenState extends State<LoginScreen>
               padding: const EdgeInsets.all(24.0),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1200),
-                child:
-                    isWide ? _buildWideLayout(context) : _buildNarrowLayout(context),
+                child: isDesktop
+    ? _buildWideLayout(context)
+    : _buildNarrowLayout(context),
+
               ),
             ),
           ),
@@ -121,35 +126,36 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildNarrowLayout(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: SizedBox(
-                width: double.infinity,
-                height: 300,
-                child: Image.asset(
-                  'assets/illustration.png',
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                ),
-              ),
-            ),
+ Widget _buildNarrowLayout(BuildContext context) {
+  return SingleChildScrollView(
+    padding: EdgeInsets.only(
+      bottom: MediaQuery.of(context).viewInsets.bottom,
+    ),
+    child: Column(
+      children: [
+        AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Image.asset(
+            'assets/illustration.png',
+            fit: BoxFit.cover,
           ),
-          const SizedBox(height: 18),
-          _buildLoginCard(context),
-        ],
-      ),
-    );
-  }
+        ),
+        const SizedBox(height: 18),
+        _buildLoginCard(context),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildLoginCard(BuildContext context) {
+    final enableHover = kIsWeb && Responsive.isDesktop(context);
+
     return Container(
-      padding: const EdgeInsets.all(28),
+     padding: EdgeInsets.all(
+  Responsive.isMobile(context) ? 16 : 28,
+),
+
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         color: Colors.white.withOpacity(0.06),
@@ -220,11 +226,55 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ),
             ),
-            TextButton(
-              onPressed: () {},
-              child: Text('Forgot Password?',
-                  style: TextStyle(color: Colors.white.withOpacity(0.8))),
-            ),
+          ValueListenableBuilder<TextEditingValue>(
+  valueListenable: _usernameCtrl,
+  builder: (context, value, _) {
+    final isEnabled = value.text.trim().isNotEmpty;
+
+    return TextButton(
+      onPressed: isEnabled
+          ? () async {
+              final username = value.text.trim();
+
+              final auth =
+                  Provider.of<AuthProvider>(context, listen: false);
+
+              final result =
+                  await auth.sendPasswordResetByUsername(username);
+
+              if (!mounted) return;
+
+              if (result != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(result),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        "Password reset email sent. Check your inbox."),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            }
+          : null, // 👈 disabled automatically
+      child: Text(
+        'Forgot Password?',
+        style: TextStyle(
+          color: isEnabled
+              ? Colors.white.withOpacity(0.8)
+              : Colors.white.withOpacity(0.4),
+        ),
+      ),
+    );
+  },
+),
+
+
           ]),
 
           const SizedBox(height: 6),
@@ -271,41 +321,46 @@ class _LoginScreenState extends State<LoginScreen>
           const SizedBox(height: 10),
 
           SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _onLoginPressed,
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.zero,
-                shape:
-                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-                elevation: 6,
-                backgroundColor: Colors.transparent,
-              ),
-              child: Ink(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                      colors: [Color(0xFF3DD3C9), Color(0xFF2A9DF4)]),
-                  borderRadius: BorderRadius.circular(28),
-                ),
-                child: Center(
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator.adaptive())
-                      : Text(
-                          'Sign In',
-                          style: GoogleFonts.openSans(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                ),
-              ),
-            ),
+  width: double.infinity,
+  height: 54,
+  child: Consumer<AuthProvider>(
+    builder: (context, auth, _) {
+      return ElevatedButton(
+        onPressed: auth.isLoading ? null : _onLoginPressed,
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28)),
+          elevation: 6,
+          backgroundColor: Colors.transparent,
+        ),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+                colors: [Color(0xFF3DD3C9), Color(0xFF2A9DF4)]),
+            borderRadius: BorderRadius.circular(28),
           ),
+          child: Center(
+            child: auth.isLoading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator.adaptive())
+                : Text(
+                    'Sign In',
+                    style: GoogleFonts.openSans(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+          ),
+        ),
+      );
+    },
+  ),
+),
+
 
           const SizedBox(height: 16),
 
@@ -331,18 +386,22 @@ class _LoginScreenState extends State<LoginScreen>
 
           const SizedBox(height: 14),
 
+
           MouseRegion(
-            onEnter: (_) => setState(() => _isHoveringGoogle = true),
-            onExit: (_) => setState(() => _isHoveringGoogle = false),
+  onEnter: enableHover ? (_) => setState(() => _isHoveringGoogle = true) : null,
+  onExit: enableHover ? (_) => setState(() => _isHoveringGoogle = false) : null,
+
             child: AnimatedScale(
-              scale: _isHoveringGoogle ? 1.07 : 1.0,
+              scale: enableHover && _isHoveringGoogle ? 1.07 : 1.0,
+
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
               child: GestureDetector(
                 onTap: () async {
                   final auth = Provider.of<AuthProvider>(context, listen: false);
                   final result = await auth.signInWithGoogle();
-
+                   if(! mounted) return;
+                   
                   if (result != null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(result)),
@@ -356,19 +415,22 @@ class _LoginScreenState extends State<LoginScreen>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
                   decoration: BoxDecoration(
-                    color:
-                        Colors.white.withOpacity(_isHoveringGoogle ? 0.12 : 0.08),
+                   color: Colors.white.withOpacity(
+                enableHover && _isHoveringGoogle ? 0.12 : 0.08,
+                        ),
+
                     borderRadius: BorderRadius.circular(40),
                     border: Border.all(color: Colors.white.withOpacity(0.12)),
-                    boxShadow: _isHoveringGoogle
-                        ? [
-                            BoxShadow(
-                              color: Colors.white.withOpacity(0.15),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            )
-                          ]
-                        : [],
+                    boxShadow: enableHover && _isHoveringGoogle
+                    ? [
+                      BoxShadow(
+                       color: Colors.white.withOpacity(0.15),
+                        blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    )
+                    ]
+                   : [],
+
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,

@@ -1,12 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email']);
 
   User? _user;
@@ -18,30 +17,41 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  AuthProvider();
+  bool _initialized = false;
+  bool get initialized => _initialized;
 
-  void initialize() {
-    _auth.authStateChanges().listen(_authStateChanged);
+  AuthProvider() {
+    _initialize();
   }
 
-  Future<void> _authStateChanged(User? firebaseUser) async {
-    _user = firebaseUser;
-
-    if (firebaseUser != null) {
-      // fetch user data from Firestore
-      final doc = await _firestore.collection("users").doc(firebaseUser.uid).get();
-      if (doc.exists) _userData = doc.data();
-    }
-
+  void _setLoading(bool value) {
+    _isLoading = value;
     notifyListeners();
   }
 
-  // GOOGLE SIGN-IN / SIGN-UP
-  Future<String?> signInWithGoogle() async {
-    try {
-      _isLoading = true;
-      notifyListeners();
+  // Initialize Firebase auth listener
+  void _initialize() {
+    _auth.authStateChanges().listen((firebaseUser) async {
+      _user = firebaseUser;
 
+      if (_user != null) {
+        final doc = await _firestore.collection("users").doc(_user!.uid).get();
+        _userData = doc.exists ? doc.data() : null;
+      } else {
+        _userData = null;
+      }
+
+      _initialized = true; // <-- ensures wrapper waits for auth state
+      notifyListeners();
+    });
+  }
+
+  // -------------------
+  // GOOGLE SIGN-IN
+  // -------------------
+  Future<String?> signInWithGoogle() async {
+    _setLoading(true);
+    try {
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return "Google Sign-In cancelled";
 
@@ -49,68 +59,96 @@ class AuthProvider with ChangeNotifier {
 
       final credential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
+        accessToken: googleAuth.accessToken,
       );
 
       final userCredential = await _auth.signInWithCredential(credential);
+      _user = userCredential.user;
 
-      // Save user to Firestore if first time
-      final docRef = _firestore.collection("users").doc(userCredential.user!.uid);
+      // Save user in Firestore if first-time login
+      final docRef = _firestore.collection("users").doc(_user!.uid);
+      final docSnap = await docRef.get();
 
-      if (!(await docRef.get()).exists) {
+      if (!docSnap.exists) {
         await docRef.set({
-          "name": userCredential.user!.displayName ?? "User",
-          "email": userCredential.user!.email,
+          "name": _user!.displayName ?? "User",
+          "email": _user!.email,
           "createdAt": DateTime.now(),
         });
       }
+
+      final freshDoc = await docRef.get();
+      _userData = freshDoc.data();
 
       return null;
     } catch (e) {
       return e.toString();
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
     }
   }
 
+  // -------------------
   // EMAIL SIGN-UP
- // SIGN UP WITH EMAIL + USERNAME
-Future<String?> signUpWithEmail(String username, String email, String password) async {
-  try {
-    _isLoading = true;
-    notifyListeners();
+  // -------------------
+  Future<String?> signUpWithEmail(String username, String email, String password) async {
+    _setLoading(true);
+    try {
+      final cred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      await cred.user!.updateDisplayName(username);
 
-    final cred = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+      await _firestore.collection("users").doc(cred.user!.uid).set({
+        "username": username,
+        "email": email,
+        "createdAt": DateTime.now(),
+      });
 
-    await cred.user!.updateDisplayName(username);
+      _user = cred.user;
+      _userData = {"username": username, "email": email};
 
-    // Save user in Firestore
-    await _firestore.collection("users").doc(cred.user!.uid).set({
-      "username": username,
-      "email": email,
-      "createdAt": DateTime.now(),
-    });
-
-    return null;
-  } on FirebaseAuthException catch (e) {
-    return e.message;
-  } finally {
-    _isLoading = false;
-    notifyListeners();
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return e.message;
+    } finally {
+      _setLoading(false);
+    }
   }
-}
 
-
-  // EMAIL LOGIN
+  // -------------------
+  // EMAIL LOGIN USING USERNAME
+  // -------------------
   Future<String?> loginWithUsername(String username, String password) async {
-  try {
-    _isLoading = true;
-    notifyListeners();
+    _setLoading(true);
+    try {
+      final query = await _firestore
+          .collection("users")
+          .where("username", isEqualTo: username)
+          .limit(1)
+          .get();
 
-    // Find email associated with username
+      if (query.docs.isEmpty) return "Username not found";
+
+      final email = query.docs.first.data()["email"] as String?;
+      if (email == null) return "No email associated with this username";
+
+      final cred = await _auth.signInWithEmailAndPassword(email: email, password: password);
+
+      _user = cred.user;
+      _userData = query.docs.first.data();
+
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return e.message;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+// -------------------
+// FORGOT PASSWORD (USERNAME BASED)
+// -------------------
+Future<String?> sendPasswordResetByUsername(String username) async {
+  try {
     final query = await _firestore
         .collection("users")
         .where("username", isEqualTo: username)
@@ -121,31 +159,34 @@ Future<String?> signUpWithEmail(String username, String email, String password) 
       return "Username not found";
     }
 
-    final email = query.docs.first.data()["email"];
+    final email = query.docs.first.data()["email"] as String?;
+    if (email == null || email.isEmpty) {
+      return "No email associated with this username";
+    }
 
-    // Now sign in normally with email + password
-    final cred = await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    _userData = query.docs.first.data();
-    return null;
-
+    await _auth.sendPasswordResetEmail(email: email);
+    return null; // success
   } on FirebaseAuthException catch (e) {
     return e.message;
-  } finally {
-    _isLoading = false;
-    notifyListeners();
+  } catch (e) {
+    return "Something went wrong. Try again.";
   }
 }
 
 
+
+  // -------------------
+  // LOGOUT
+  // -------------------
   Future<void> logout() async {
-    await _auth.signOut();
-    await _googleSignIn.signOut();
-    _user = null;
-    _userData = null;
-    notifyListeners();
+    _setLoading(true);
+    try {
+      await _auth.signOut();
+      await _googleSignIn.signOut();
+      _user = null;
+      _userData = null;
+    } finally {
+      _setLoading(false);
+    }
   }
 }

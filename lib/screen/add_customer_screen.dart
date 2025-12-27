@@ -19,6 +19,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   late TextEditingController _email;
   late TextEditingController _phone;
   late TextEditingController _company;
+  late TextEditingController _status;
+  late TextEditingController _city;
+  late TextEditingController _orders;
+  late TextEditingController _amountSpent;
 
   bool _isSaving = false;
 
@@ -28,9 +32,15 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     _name = TextEditingController(text: widget.initialData?['name'] ?? '');
     _email = TextEditingController(text: widget.initialData?['email'] ?? '');
     _phone = TextEditingController(text: widget.initialData?['phone'] ?? '');
-    _company = TextEditingController(
-      text: widget.initialData?['company'] ?? '',
-    );
+    _company =
+        TextEditingController(text: widget.initialData?['company'] ?? '');
+    _status =
+        TextEditingController(text: widget.initialData?['status'] ?? 'Lead');
+    _city = TextEditingController(text: widget.initialData?['city'] ?? '');
+    _orders =
+        TextEditingController(text: widget.initialData?['orders'] ?? '0');
+    _amountSpent = TextEditingController(
+        text: widget.initialData?['amountSpent'] ?? '0');
   }
 
   @override
@@ -39,6 +49,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     _email.dispose();
     _phone.dispose();
     _company.dispose();
+    _status.dispose();
+    _city.dispose();
+    _orders.dispose();
+    _amountSpent.dispose();
     super.dispose();
   }
 
@@ -54,6 +68,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           email: _email.text.trim(),
           phone: _phone.text.trim(),
           company: _company.text.trim(),
+          status: _status.text.trim(),
+          city: _city.text.trim(),
+          orders: _orders.text.trim(),
+          amountSpent: _amountSpent.text.trim(),
         );
       } else {
         await _service.updateCustomer(
@@ -62,14 +80,18 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           email: _email.text.trim(),
           phone: _phone.text.trim(),
           company: _company.text.trim(),
+          status: _status.text.trim(),
+          city: _city.text.trim(),
+          orders: _orders.text.trim(),
+          amountSpent: _amountSpent.text.trim(),
         );
       }
 
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to save: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save: $e')),
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -95,7 +117,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(
-          color: Color(0xFF3F51B5), // Indigo focus color
+          color: Color(0xFF3F51B5),
           width: 1.4,
         ),
       ),
@@ -111,7 +133,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     final isEdit = widget.customerId != null;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F4F8), // light CRM gray
+      backgroundColor: const Color(0xFFF4F4F8),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
@@ -128,7 +150,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             constraints: const BoxConstraints(maxWidth: 550),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              color: const Color(0xFFF8F9FF), // light indigo-tint card
+              color: const Color(0xFFF8F9FF),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.03),
@@ -152,50 +174,65 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                         color: Color(0xFF262626),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      "Fill in the customer details below.",
-                      style: TextStyle(fontSize: 13, color: Color(0xFF6D6D6D)),
-                    ),
                     const SizedBox(height: 28),
 
                     TextFormField(
                       controller: _name,
-                      decoration: _fieldDecoration(
-                        "Customer name",
-                        "E.g. John Doe",
-                      ),
-                      validator:
-                          (v) => v == null || v.isEmpty ? "Enter name" : null,
+                      decoration:
+                          _fieldDecoration("Customer name", "E.g. John Doe"),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? "Enter name" : null,
                     ),
                     const SizedBox(height: 16),
 
                     TextFormField(
                       controller: _email,
-                      keyboardType: TextInputType.emailAddress,
                       decoration: _fieldDecoration(
-                        "Email",
-                        "customer@example.com",
-                      ),
+                          "Email", "customer@example.com"),
                     ),
                     const SizedBox(height: 16),
 
                     TextFormField(
                       controller: _phone,
-                      keyboardType: TextInputType.phone,
-                      decoration: _fieldDecoration(
-                        "Phone",
-                        "E.g. +91 98765 43210",
-                      ),
+                      decoration:
+                          _fieldDecoration("Phone", "E.g. +91 98765 43210"),
                     ),
                     const SizedBox(height: 16),
 
                     TextFormField(
                       controller: _company,
-                      decoration: _fieldDecoration(
-                        "Company",
-                        "E.g. Acme Pvt Ltd",
-                      ),
+                      decoration:
+                          _fieldDecoration("Company", "E.g. Acme Pvt Ltd"),
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: _status,
+                      decoration:
+                          _fieldDecoration("Status", "Lead / Customer"),
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: _city,
+                      decoration:
+                          _fieldDecoration("City", "E.g. Mumbai"),
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: _orders,
+                      keyboardType: TextInputType.number,
+                      decoration:
+                          _fieldDecoration("Orders", "0"),
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: _amountSpent,
+                      keyboardType: TextInputType.number,
+                      decoration:
+                          _fieldDecoration("Amount Spent", "0"),
                     ),
 
                     const SizedBox(height: 28),
@@ -205,46 +242,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                       children: [
                         TextButton(
                           onPressed:
-                              _isSaving
-                                  ? null
-                                  : () => Navigator.of(context).pop(),
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF3F51B5), // Indigo
-                          ),
+                              _isSaving ? null : () => Navigator.pop(context),
                           child: const Text("Cancel"),
                         ),
                         const SizedBox(width: 10),
                         ElevatedButton(
                           onPressed: _isSaving ? null : _save,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF3F51B5), // Indigo
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 14,
-                            ),
-                            shape: const StadiumBorder(),
-                            elevation: 0,
-                          ),
-                          child:
-                              _isSaving
-                                  ? const SizedBox(
-                                    height: 18,
-                                    width: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  )
-                                  : Text(
-                                    isEdit ? "Save changes" : "Add customer",
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                          child: Text(
+                              isEdit ? "Save changes" : "Add customer"),
                         ),
                       ],
                     ),

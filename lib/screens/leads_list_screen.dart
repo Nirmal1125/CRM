@@ -1,10 +1,10 @@
-// lib/screens/leads_list_screen.dart
 import 'dart:async';
+import 'package:crm/screen/add_lead_screen.dart';
 import 'package:flutter/material.dart';
 import '../models/lead.dart';
-import '../services/leads_service.dart';
+import '../services/lead_service.dart';
 import '../widgets/lead_card.dart';
-// NOTE: lead_form_screen.dart intentionally NOT imported anymore
+import '../utils/app_scroll_behavior.dart';
 
 class LeadsListScreen extends StatefulWidget {
   const LeadsListScreen({Key? key}) : super(key: key);
@@ -14,58 +14,63 @@ class LeadsListScreen extends StatefulWidget {
 }
 
 class _LeadsListScreenState extends State<LeadsListScreen> {
-  final LeadsService _service = LeadsService();
-  List<Lead> _leads = [];
-  bool _loading = true;
+  final LeadService _leadService = LeadService();
+
   String _query = '';
   String _statusFilter = 'All';
-  final _statuses = ['All', 'New', 'Contacted', 'Qualified', 'Lost', 'Converted'];
+
+  // ✅ MUST MATCH AddLeadScreen
+  final List<String> _statuses = [
+    'All',
+    'New',
+    'In Progress',
+    'Won',
+    'Lost',
+  ];
 
   Timer? _debounce;
 
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
+ @override
+void dispose() {
+  _debounce?.cancel();
+  _debounce = null;
+  super.dispose();
+}
 
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    super.dispose();
-  }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
-    final leads = await _service.getLeads(query: _query, status: _statusFilter);
-    setState(() {
-      _leads = leads;
-      _loading = false;
-    });
-  }
-
-  // Debounced search handler
   void _onSearchChanged(String value) {
-    _query = value;
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () {
-      if (mounted) _load();
+      if (mounted) {
+        setState(() => _query = value.trim().toLowerCase());
+      }
     });
   }
 
-  // EDIT now disabled — show informational dialog
-  Future<void> _onEditDisabled() async {
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Editing disabled'),
-        content: const Text('Editing leads from this screen is disabled. Contact your administrator to update lead data.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
-        ],
+ Future<void> _editLead(Lead lead) async {
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => AddLeadScreen(
+        leadId: lead.id,
+        initialData: {
+          'name': lead.name,
+          'company': lead.company,
+          'email': lead.email,
+          'phone': lead.phone,
+          'status': lead.status,
+          'source': lead.source,
+          'assignedTo': lead.assignedTo,
+          'notes': lead.notes,
+          'tags': lead.tags,
+          'score': lead.score,
+        },
       ),
-    );
-  }
+    ),
+  );
+}
+
+
 
   Future<void> _deleteLead(String id) async {
     final confirm = await showDialog<bool>(
@@ -74,37 +79,58 @@ class _LeadsListScreenState extends State<LeadsListScreen> {
         title: const Text('Delete lead?'),
         content: const Text('This action cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
         ],
       ),
     );
 
     if (confirm == true) {
-      await _service.deleteLead(id);
-      await _load();
+      await _leadService.deleteLead(id);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final width = MediaQuery.of(context).size.width;
+    final bool isMobile = width < 700;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Leads'),
         elevation: 0,
         backgroundColor: theme.scaffoldBackgroundColor,
         foregroundColor: theme.iconTheme.color,
-        // Add button removed intentionally
       ),
+
+      /// ➕ ADD LEAD
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await Navigator.pushNamed(context, '/add-lead');
+        },
+        child: const Icon(Icons.add),
+      ),
+
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: EdgeInsets.all(isMobile ? 12 : 20),
           child: Column(
             children: [
-              // Search + status dropdown row
+              // =========================
+              // 🔍 SEARCH + FILTER
+              // =========================
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
                   children: [
                     Expanded(
@@ -113,7 +139,13 @@ class _LeadsListScreenState extends State<LeadsListScreen> {
                         decoration: BoxDecoration(
                           color: theme.cardColor,
                           borderRadius: BorderRadius.circular(12),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Row(
                           children: [
@@ -122,25 +154,18 @@ class _LeadsListScreenState extends State<LeadsListScreen> {
                             Expanded(
                               child: TextField(
                                 decoration: const InputDecoration(
-                                  hintText: 'Search name, company, email or phone',
+                                  hintText: 'Search leads',
                                   border: InputBorder.none,
                                   isDense: true,
                                 ),
                                 onChanged: _onSearchChanged,
-                                controller: TextEditingController.fromValue(TextEditingValue(
-                                  text: _query,
-                                  selection: TextSelection.collapsed(offset: _query.length),
-                                )),
                               ),
                             ),
                             if (_query.isNotEmpty)
                               IconButton(
                                 icon: const Icon(Icons.clear, size: 20),
                                 onPressed: () {
-                                  setState(() {
-                                    _query = '';
-                                  });
-                                  _load();
+                                  setState(() => _query = '');
                                 },
                               ),
                           ],
@@ -148,7 +173,6 @@ class _LeadsListScreenState extends State<LeadsListScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    // Status dropdown (compact)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       decoration: BoxDecoration(
@@ -158,11 +182,17 @@ class _LeadsListScreenState extends State<LeadsListScreen> {
                       child: DropdownButton<String>(
                         value: _statusFilter,
                         underline: const SizedBox(),
-                        items: _statuses.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                        items: _statuses
+                            .map(
+                              (s) => DropdownMenuItem(
+                                value: s,
+                                child: Text(s),
+                              ),
+                            )
+                            .toList(),
                         onChanged: (v) {
                           if (v == null) return;
                           setState(() => _statusFilter = v);
-                          _load();
                         },
                       ),
                     ),
@@ -172,24 +202,30 @@ class _LeadsListScreenState extends State<LeadsListScreen> {
 
               const SizedBox(height: 8),
 
-              // Status chips (horizontal scroll)
+              // =========================
+              // 🏷 STATUS CHIPS
+              // =========================
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: _statuses.where((s) => s != 'All').map((s) {
                     final selected = _statusFilter == s;
                     return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
+                      padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
                         label: Text(s),
                         selected: selected,
                         onSelected: (sel) {
                           setState(() => _statusFilter = sel ? s : 'All');
-                          _load();
                         },
-                        selectedColor: theme.primaryColor.withOpacity(0.12),
+                        selectedColor:
+                            theme.primaryColor.withOpacity(0.12),
                         backgroundColor: theme.cardColor,
-                        labelStyle: TextStyle(color: selected ? theme.primaryColor : Colors.black87),
+                        labelStyle: TextStyle(
+                          color: selected
+                              ? theme.primaryColor
+                              : Colors.black87,
+                        ),
                       ),
                     );
                   }).toList(),
@@ -198,46 +234,86 @@ class _LeadsListScreenState extends State<LeadsListScreen> {
 
               const SizedBox(height: 12),
 
-              // Lead list
+              // =========================
+              // 🔥 FIRESTORE STREAM
+              // =========================
               Expanded(
-                child: _loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _leads.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const SizedBox(height: 12),
-                                const Text('No leads found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 6),
-                                const Text('Leads cannot be created from this screen.', style: TextStyle(color: Colors.black54)),
-                              ],
-                            ),
-                          )
-                        : RefreshIndicator(
-                            onRefresh: _load,
-                            child: ListView.builder(
-                              itemCount: _leads.length,
-                              itemBuilder: (ctx, i) {
-                                final lead = _leads[i];
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 6.0),
-                                  child: LeadCard(
-                                    lead: lead,
-                                    // Editing is disabled now — show info dialog
-                                    onEdit: _onEditDisabled,
-                                    onDelete: () => _deleteLead(lead.id),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
+                child: ScrollConfiguration(
+                  behavior: AppScrollBehavior(),
+                  child: StreamBuilder<List<Lead>>(
+                    stream: _leadService.streamLeads(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+
+                      final leads = snapshot.data ?? [];
+
+                      if (leads.isEmpty) {
+                        return const Center(
+                          child: Text('No leads found'),
+                        );
+                      }
+
+                      // =========================
+                      // 🔎 FILTERING
+                      // =========================
+                      final filtered = leads.where((l) {
+                        final matchesStatus =
+                            _statusFilter == 'All' ||
+                            l.status.toLowerCase() ==
+                                _statusFilter.toLowerCase();
+
+                        final matchesQuery =
+                            _query.isEmpty ||
+                            l.name.toLowerCase().contains(_query) ||
+                            l.company.toLowerCase().contains(_query) ||
+                            l.email.toLowerCase().contains(_query) ||
+                            l.phone.toLowerCase().contains(_query);
+
+                        return matchesStatus && matchesQuery;
+                      }).toList();
+
+                      // Newest first
+                     filtered.sort((a, b) {
+  final aTime = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+  final bTime = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+  return bTime.compareTo(aTime);
+});
+
+
+                      if (filtered.isEmpty) {
+                        return const Center(
+                          child: Text('No leads match your filters'),
+                        );
+                      }
+
+                      return ListView.builder(
+                        itemCount: filtered.length,
+                        itemBuilder: (ctx, i) {
+                          final lead = filtered[i];
+                          return Padding(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 6),
+                            child: LeadCard(
+                                 lead: lead,
+                                 onEdit: () => _editLead(lead),
+                                 onDelete: () => _deleteLead(lead.id),
+                             ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
               ),
             ],
           ),
         ),
       ),
-      // FloatingActionButton removed to disable adding
     );
   }
 }

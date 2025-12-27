@@ -27,6 +27,7 @@ dependencies:
 
   # Utility
   uuid: ^3.0.7
+  rxdart: ^0.28.0
 
 dev_dependencies:
   flutter_test:

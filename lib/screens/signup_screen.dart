@@ -1,8 +1,10 @@
 // lib/screens/signup_screen.dart
 import 'package:crm/provider/auth_provider.dart';
+import 'package:crm/utils/responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -31,38 +33,37 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
- void _onSignUp() async {
-  if (!_formKey.currentState!.validate()) return;
+  Future<void> _onSignUp() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  final auth = Provider.of<AuthProvider>(context, listen: false);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
 
-  final result = await auth.signUpWithEmail(
-    _nameCtrl.text.trim(),
-    _emailCtrl.text.trim(),
-    _passwordCtrl.text.trim(),
-  );
+    final result = await auth.signUpWithEmail(
+      _nameCtrl.text.trim(),
+      _emailCtrl.text.trim(),
+      _passwordCtrl.text.trim(),
+    );
 
-  if (result != null) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
-  } else {
-    Navigator.pushReplacementNamed(context, '/dashboard');
+    if (!mounted) return;
+
+    if (result != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(result)));
+    } else {
+      Navigator.pushReplacementNamed(context, '/dashboard');
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isWide = size.width >= 900;
+    final isDesktop = Responsive.isDesktop(context);
 
     return Scaffold(
-      // make scaffold transparent so our gradient container shows through
       backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Container(
           width: double.infinity,
           height: double.infinity,
-          // match the same gradient as the login screen
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -78,7 +79,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
               padding: const EdgeInsets.all(24.0),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1000),
-                child: isWide ? _buildWide(context) : _buildNarrow(context),
+                child: isDesktop
+                    ? _buildWide(context)
+                    : _buildNarrow(context),
               ),
             ),
           ),
@@ -90,31 +93,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Widget _buildWide(BuildContext context) {
     return Row(
       children: [
-        // left illustration panel (visually matching login — you can change to Image if needed)
-       Expanded(
-  flex: 5,
-  child: Container(
-    padding: const EdgeInsets.all(32),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.02),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.04)),
+        Expanded(
+          flex: 5,
+          child: Container(
+            padding: const EdgeInsets.all(32),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.02),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.white.withOpacity(0.04)),
+                ),
+                child: Image.asset(
+                  'assets/signup_art.png',
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
         ),
-        child: Image.asset(
-          'assets/signup_art.png',   // your sign-up illustration
-          fit: BoxFit.cover,
-        ),
-      ),
-    ),
-  ),
-),
-
         const SizedBox(width: 28),
-
-        // Sign-up card
         Expanded(flex: 4, child: _buildSignUpCard(context)),
       ],
     );
@@ -122,6 +121,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   Widget _buildNarrow(BuildContext context) {
     return SingleChildScrollView(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: Column(
         children: [
           const SizedBox(height: 18),
@@ -132,11 +134,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Widget _buildSignUpCard(BuildContext context) {
+    final enableHover = kIsWeb && Responsive.isDesktop(context);
+
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        color: Colors.white.withOpacity(0.06), // glass card
+        color: Colors.white.withOpacity(0.06),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
@@ -147,7 +151,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ],
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // header: back arrow + title
         Row(
           children: [
             InkWell(
@@ -163,19 +166,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            Text('Create Account',
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 20,
-                )),
+            Text(
+              'Create Account',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 20,
+              ),
+            ),
           ],
         ),
-
-        const SizedBox(height: 18),
-
-        Text('Create your account',
-            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600)),
 
         const SizedBox(height: 18),
 
@@ -183,29 +183,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // Full name
-              TextFormField(
-                controller: _nameCtrl,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration(label: 'Full name'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter your name' : null,
-              ),
+              _textField(_nameCtrl, 'Full name'),
+              const SizedBox(height: 12),
+              _textField(_emailCtrl, 'Email'),
               const SizedBox(height: 12),
 
-              // Email
-              TextFormField(
-                controller: _emailCtrl,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration(label: 'Email'),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Enter email';
-                  if (!v.contains('@')) return 'Enter valid email';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-
-              // Password
               TextFormField(
                 controller: _passwordCtrl,
                 obscureText: !_showPassword,
@@ -213,35 +195,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 decoration: _inputDecoration(
                   label: 'Password',
                   suffix: IconButton(
-                    icon: Icon(_showPassword ? Icons.visibility : Icons.visibility_off,
-                        color: Colors.white70),
-                    onPressed: () => setState(() => _showPassword = !_showPassword),
+                    icon: Icon(
+                      _showPassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: Colors.white70,
+                    ),
+                    onPressed: () =>
+                        setState(() => _showPassword = !_showPassword),
                   ),
                 ),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Enter password';
-                  if (v.length < 6) return 'Password too short';
-                  return null;
-                },
               ),
+
               const SizedBox(height: 12),
 
-              // Confirm password
-              TextFormField(
-                controller: _confirmCtrl,
-                obscureText: !_showPassword,
-                style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration(label: 'Confirm password'),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Confirm password';
-                  if (v != _passwordCtrl.text) return 'Passwords do not match';
-                  return null;
-                },
-              ),
+              _textField(_confirmCtrl, 'Confirm password'),
 
               const SizedBox(height: 20),
 
-              // Create account gradient button (same style as login)
               SizedBox(
                 width: double.infinity,
                 height: 54,
@@ -249,102 +220,100 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   onPressed: _isLoading ? null : _onSignUp,
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28)),
                     elevation: 6,
                     backgroundColor: Colors.transparent,
                   ),
                   child: Ink(
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFF3DD3C9), Color(0xFF2A9DF4)]),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3DD3C9), Color(0xFF2A9DF4)],
+                      ),
                       borderRadius: BorderRadius.circular(28),
                     ),
                     child: Center(
                       child: _isLoading
-                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator.adaptive())
-                          : Text('Create account',
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator.adaptive(),
+                            )
+                          : Text(
+                              'Create account',
                               style: GoogleFonts.openSans(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 16,
-                              )),
+                              ),
+                            ),
                     ),
                   ),
                 ),
               ),
 
-              const SizedBox(height: 12),
-
-              // Back to login link
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Text('Already have an account?', style: TextStyle(color: Colors.white.withOpacity(0.7))),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Back to login'),
-                )
-              ]),
-
-              const SizedBox(height: 12),
-
-              // Divider + or
-              Row(children: [
-                Expanded(child: Divider(color: Colors.white.withOpacity(0.08))),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                  child: Text('or', style: TextStyle(color: Colors.white.withOpacity(0.6))),
-                ),
-                Expanded(child: Divider(color: Colors.white.withOpacity(0.08))),
-              ]),
-
               const SizedBox(height: 14),
 
-              // Google sign-up pill button (hover effect)
               MouseRegion(
-                onEnter: (_) => setState(() => _isHoveringGoogle = true),
-                onExit: (_) => setState(() => _isHoveringGoogle = false),
+                onEnter: enableHover
+                    ? (_) => setState(() => _isHoveringGoogle = true)
+                    : null,
+                onExit: enableHover
+                    ? (_) => setState(() => _isHoveringGoogle = false)
+                    : null,
                 child: AnimatedScale(
-                  scale: _isHoveringGoogle ? 1.07 : 1.0,
+                  scale:
+                      enableHover && _isHoveringGoogle ? 1.07 : 1.0,
                   duration: const Duration(milliseconds: 200),
-                  child: GestureDetector(
-                   onTap: () async {
-                   final auth = Provider.of<AuthProvider>(context, listen: false);
-                    final result = await auth.signInWithGoogle();
-
-                 if (result != null) {
-                     ScaffoldMessenger.of(context).showSnackBar(
-                       SnackBar(content: Text(result)),
-           );
-             } else {
-                 Navigator.pushReplacementNamed(context, '/dashboard');
-                      }
-                      },
-
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(_isHoveringGoogle ? 0.12 : 0.08),
-                        borderRadius: BorderRadius.circular(40),
-                        border: Border.all(color: Colors.white.withOpacity(0.12)),
-                        boxShadow: _isHoveringGoogle
-                            ? [BoxShadow(color: Colors.white.withOpacity(0.12), blurRadius: 10, offset: const Offset(0, 4))]
-                            : [],
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 22, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(
+                        enableHover && _isHoveringGoogle ? 0.12 : 0.08,
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                            child: Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: Image.asset('assets/google_logo.png', fit: BoxFit.contain),
+                      borderRadius: BorderRadius.circular(40),
+                      border: Border.all(
+                          color: Colors.white.withOpacity(0.12)),
+                      boxShadow: enableHover && _isHoveringGoogle
+                          ? [
+                              BoxShadow(
+                                color:
+                                    Colors.white.withOpacity(0.12),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              )
+                            ]
+                          : [],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: Image.asset(
+                              'assets/google_logo.png',
+                              fit: BoxFit.contain,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Text('Sign up with Google', style: TextStyle(color: Colors.white.withOpacity(0.95), fontWeight: FontWeight.w600, fontSize: 15)),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Sign up with Google',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.95),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -356,21 +325,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  Widget _textField(TextEditingController c, String label) {
+    return TextFormField(
+      controller: c,
+      style: const TextStyle(color: Colors.white),
+      decoration: _inputDecoration(label: label),
+    );
+  }
+
   InputDecoration _inputDecoration({required String label, Widget? suffix}) {
     return InputDecoration(
       labelText: label,
       labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
       filled: true,
       fillColor: Colors.white.withOpacity(0.02),
-      suffixIcon: suffix != null ? Padding(padding: const EdgeInsets.only(right: 8.0), child: suffix) : null,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      suffixIcon: suffix,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+        borderSide:
+            BorderSide(color: Colors.white.withOpacity(0.05)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.12)),
+        borderSide:
+            BorderSide(color: Colors.white.withOpacity(0.12)),
       ),
     );
   }

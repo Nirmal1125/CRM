@@ -1,19 +1,23 @@
 // lib/main.dart
+import 'package:crm/auth_wrapper.dart';
 import 'package:crm/firebase_options.dart';
 import 'package:crm/provider/auth_provider.dart';
+import 'package:crm/screen/add_customer_screen.dart';
+import 'package:crm/screen/add_lead_screen.dart';
+import 'package:crm/screen/dashboard_ui.dart';
+import 'package:crm/screens/login_screen.dart';
+import 'package:crm/screens/signup_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'screens/login_screen.dart';
-import 'screens/signup_screen.dart';
-import 'screens/customer_list_screen.dart';
-import 'screens/leads_list_screen.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   ); // Firebase initialization
+await auth.FirebaseAuth.instance.setPersistence(auth.Persistence.LOCAL);
+
   runApp(const MyApp());
 }
 
@@ -49,31 +53,30 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        // Add other providers here as needed
-      ], 
-    
-    child:MaterialApp(
-      title: 'CRM',
-      debugShowCheckedModeBanner: false,
-      // Force light theme as requested
-      theme: _buildLightTheme(),
-      darkTheme: _buildLightTheme(),
-      themeMode: ThemeMode.light,
-
-      initialRoute: '/',
-
-      routes: {
-        '/': (context) => const LoginScreen(),
-        '/signup': (context) => const SignUpScreen(),
-
-        // Customer screen - now constructed without passing null
-        '/customers': (context) => const CustomerListScreen(),
-
-        '/leads': (context) => const LeadsListScreen(),
+  providers: [
+    ChangeNotifierProvider(
+      create: (_) {
+        final authProvider = AuthProvider(); 
+        return authProvider;
       },
     ),
-    );
+  ],
+  child: MaterialApp(
+    title: 'CRM',
+    debugShowCheckedModeBanner: false,
+    theme: _buildLightTheme(),
+    darkTheme: _buildLightTheme(),
+    themeMode: ThemeMode.light,
+    home: const AuthWrapper(),
+     routes: {
+    '/login': (context) => const LoginScreen(),
+    '/dashboard': (context) => const DashboardScreen(),
+    '/signup': (context) => const SignUpScreen(),
+    '/add-customer': (context) => const AddCustomerScreen(),
+    '/add-lead': (context) => const AddLeadScreen(),
+  },
+  ),
+);
+
   }
 }

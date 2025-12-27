@@ -3,54 +3,36 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Customer {
   final String id;
   final String name;
-  final String email;
   final String phone;
-  final String company;
-  final DateTime createdAt;
-  final String ownerId;
+  final String email;
+  final String status;
+  final String city;
+  final String orders;
+  final String amountSpent;
 
   Customer({
     required this.id,
     required this.name,
-    required this.email,
     required this.phone,
-    required this.company,
-    required this.createdAt,
-    required this.ownerId,
+    required this.email,
+    required this.status,
+    required this.city,
+    required this.orders,
+    required this.amountSpent,
   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'email': email,
-      'phone': phone,
-      'company': company,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'ownerId': ownerId,
-    };
-  }
-
-  factory Customer.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data() ?? {};
-    final ts = data['createdAt'];
-    DateTime created;
-
-    if (ts is Timestamp) {
-      created = ts.toDate();
-    } else if (ts is DateTime) {
-      created = ts;
-    } else {
-      created = DateTime.now();
-    }
+  factory Customer.fromDoc(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
 
     return Customer(
       id: doc.id,
       name: data['name'] ?? '',
-      email: data['email'] ?? '',
       phone: data['phone'] ?? '',
-      company: data['company'] ?? '',
-      createdAt: created,
-      ownerId: data['ownerId'] ?? '',
+      email: data['email'] ?? '',
+      status: data['status'] ?? '',
+      city: data['city'] ?? '',
+      orders: data['orders'] ?? '',
+      amountSpent: data['amountSpent'] ?? '',
     );
   }
 }
