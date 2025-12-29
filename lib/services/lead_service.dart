@@ -26,9 +26,7 @@ class LeadService {
     List<String> tags = const [],
   }) async {
     final user = _auth.currentUser;
-    if (user == null) {
-      throw Exception('User not logged in');
-    }
+    if (user == null) throw Exception('User not logged in');
 
     await _collection.add({
       'name': name,
@@ -48,20 +46,17 @@ class LeadService {
   }
 
   // =========================
-  // 🔥 STABLE LEAD STREAM (WEB SAFE)
+  // 🔥 LEADS STREAM
   // =========================
   Stream<List<Lead>> streamLeads() {
     return _auth.authStateChanges().switchMap((user) {
-      if (user == null) {
-        return Stream.value(<Lead>[]);
-      }
+      if (user == null) return Stream.value([]);
 
       return _collection
           .where('ownerId', isEqualTo: user.uid)
           .snapshots()
           .map(
-            (snap) =>
-                snap.docs.map((doc) => Lead.fromDoc(doc)).toList(),
+            (snap) => snap.docs.map((d) => Lead.fromDoc(d)).toList(),
           );
     });
   }
@@ -99,6 +94,47 @@ class LeadService {
       data['updatedAt'] = FieldValue.serverTimestamp();
       await _collection.doc(id).update(data);
     }
+  }
+
+  // =========================
+  // 🔁 CONVERT LEAD → CUSTOMER
+  // =========================
+  Future<void> convertLeadToCustomer(Lead lead) async {
+    final customersRef = _firestore.collection('customers');
+
+    // Prevent duplicate customer
+    if (lead.email.isNotEmpty) {
+      final existing = await customersRef
+          .where('email', isEqualTo: lead.email)
+          .limit(1)
+          .get();
+
+      if (existing.docs.isNotEmpty) {
+        throw Exception('Customer already exists');
+      }
+    }
+
+    // Create customer
+    await customersRef.add({
+      'name': lead.name,
+      'company': lead.company,
+      'email': lead.email,
+      'phone': lead.phone,
+      'city': '',
+      'status': 'Customer',
+      'orders': '0',
+      'amountSpent': '0',
+      'ownerId': lead.ownerId,
+      'fromLeadId': lead.id,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    // Update lead
+    await _collection.doc(lead.id).update({
+      'status': 'Converted',
+      'updatedAt': FieldValue.serverTimestamp(),
+      'convertedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   // =========================

@@ -4,6 +4,7 @@ import 'package:crm/firebase_options.dart';
 import 'package:crm/provider/auth_provider.dart';
 import 'package:crm/screen/add_customer_screen.dart';
 import 'package:crm/screen/add_lead_screen.dart';
+import 'package:crm/screen/add_task_screen.dart';
 import 'package:crm/screen/dashboard_ui.dart';
 import 'package:crm/screens/login_screen.dart';
 import 'package:crm/screens/signup_screen.dart';
@@ -74,6 +75,7 @@ class MyApp extends StatelessWidget {
     '/signup': (context) => const SignUpScreen(),
     '/add-customer': (context) => const AddCustomerScreen(),
     '/add-lead': (context) => const AddLeadScreen(),
+    '/add-task': (context) => const AddTaskScreen(),
   },
   ),
 );

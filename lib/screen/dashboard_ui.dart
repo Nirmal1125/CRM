@@ -1,5 +1,7 @@
 import 'package:crm/screens/customer_list_screen.dart';
 import 'package:crm/screens/leads_list_screen.dart';
+import 'package:crm/screens/task_list_screen.dart';
+import 'package:crm/services/dashboard_service.dart';
 import 'package:crm/utils/responsive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -43,7 +45,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 2:
         return const LeadsListScreen();
       case 3:
-        return const Center(child: Text('Tasks screen goes here'));
+        return TasksListScreen();
       case 4:
         return const Center(child: Text('Settings screen goes here'));
       default:
@@ -71,9 +73,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
         ),
       ),
-
       bottomNavigationBar: isMobile ? _buildBottomNav() : null,
-
       body: isMobile
           ? SafeArea(
               child: Padding(
@@ -109,73 +109,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // NAVIGATION RAIL
   // =========================
   Widget _buildNavigationRail() {
-  return AnimatedContainer(
-    duration: const Duration(milliseconds: 200),
-    width: _isRailExtended ? 200 : 72,
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      border: Border(
-        right: BorderSide(color: Color(0xFFE4E1EC)),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: _isRailExtended ? 200 : 72,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          right: BorderSide(color: Color(0xFFE4E1EC)),
+        ),
       ),
-    ),
-    child: NavigationRail(
-      selectedIndex: _selectedIndex,
-      onDestinationSelected: (index) {
-        setState(() => _selectedIndex = index);
-      },
-      extended: _isRailExtended,
-      backgroundColor: Colors.white,
-      minExtendedWidth: 190,
-      labelType: NavigationRailLabelType.none,
-
-      leading: Padding(
-        padding: const EdgeInsets.only(top: 16, bottom: 24),
-        child: _isRailExtended
-            ? const Text(
-                'CRM Panel',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF262626),
+      child: NavigationRail(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() => _selectedIndex = index);
+        },
+        extended: _isRailExtended,
+        backgroundColor: Colors.white,
+        minExtendedWidth: 190,
+        labelType: NavigationRailLabelType.none,
+        leading: Padding(
+          padding: const EdgeInsets.only(top: 16, bottom: 24),
+          child: _isRailExtended
+              ? const Text(
+                  'CRM Panel',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF262626),
+                  ),
+                )
+              : const Icon(
+                  Icons.dashboard_outlined,
+                  color: Color(0xFF3F51B5),
                 ),
-              )
-            : const Icon(
-                Icons.dashboard_outlined,
-                color: Color(0xFF3F51B5),
-              ),
+        ),
+        destinations: const [
+          NavigationRailDestination(
+            icon: Icon(Icons.space_dashboard_outlined),
+            selectedIcon: Icon(Icons.space_dashboard),
+            label: Text('Dashboard'),
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.people_outline),
+            selectedIcon: Icon(Icons.people),
+            label: Text('Customers'),
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.scatter_plot_outlined),
+            selectedIcon: Icon(Icons.scatter_plot),
+            label: Text('Leads'),
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.task_alt_outlined),
+            selectedIcon: Icon(Icons.task_alt),
+            label: Text('Tasks'),
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: Text('Settings'),
+          ),
+        ],
       ),
-
-      destinations: const [
-        NavigationRailDestination(
-          icon: Icon(Icons.space_dashboard_outlined),
-          selectedIcon: Icon(Icons.space_dashboard),
-          label: Text('Dashboard'),
-        ),
-        NavigationRailDestination(
-          icon: Icon(Icons.people_outline),
-          selectedIcon: Icon(Icons.people),
-          label: Text('Customers'),
-        ),
-        NavigationRailDestination(
-          icon: Icon(Icons.scatter_plot_outlined),
-          selectedIcon: Icon(Icons.scatter_plot),
-          label: Text('Leads'),
-        ),
-        NavigationRailDestination(
-          icon: Icon(Icons.task_alt_outlined),
-          selectedIcon: Icon(Icons.task_alt),
-          label: Text('Tasks'),
-        ),
-        NavigationRailDestination(
-          icon: Icon(Icons.settings_outlined),
-          selectedIcon: Icon(Icons.settings),
-          label: Text('Settings'),
-        ),
-      ],
-    ),
-  );
-}
-
+    );
+  }
 
   Widget _buildBottomNav() {
     return BottomNavigationBar(
@@ -211,7 +208,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 // =========================
-// DASHBOARD GRID
+// DASHBOARD GRID (REAL DATA)
 // =========================
 class _DashboardGrid extends StatelessWidget {
   final bool isWide;
@@ -219,62 +216,68 @@ class _DashboardGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
+    final service = DashboardService();
+
+    return GridView(
       padding: const EdgeInsets.all(8),
-      itemCount: 6,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: isWide ? 3 : 2,
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
         childAspectRatio: 1.2,
       ),
-      itemBuilder: (context, index) {
-        const cards = [
-          _DashboardCard(
-            icon: Icons.people_outline,
-            title: 'Total Customers',
-            value: '1,234',
-            color: Color(0xFF3F51B5),
-          ),
-          _DashboardCard(
-            icon: Icons.trending_up,
-            title: 'Total Leads',
-            value: '856',
-            color: Colors.green,
-          ),
-          _DashboardCard(
-            icon: Icons.check_circle_outline,
-            title: 'Won Deals',
-            value: '342',
-            color: Colors.teal,
-          ),
-          _DashboardCard(
-            icon: Icons.cancel_outlined,
-            title: 'Lost Deals',
-            value: '89',
-            color: Colors.redAccent,
-          ),
-          _DashboardCard(
-            icon: Icons.task_alt,
-            title: 'Open Tasks',
-            value: '67',
-            color: Colors.orange,
-          ),
-          _DashboardCard(
-            icon: Icons.schedule,
-            title: 'Due Today',
-            value: '12',
-            color: Colors.purple,
-          ),
-        ];
-        return cards[index];
+      children: [
+        _statCard(
+          title: 'Total Customers',
+          icon: Icons.people_outline,
+          color: const Color(0xFF3F51B5),
+          stream: service.customersCount(),
+        ),
+        _statCard(
+          title: 'Total Leads',
+          icon: Icons.trending_up,
+          color: Colors.green,
+          stream: service.leadsCount(),
+        ),
+        _statCard(
+          title: 'Won Deals',
+          icon: Icons.check_circle_outline,
+          color: Colors.teal,
+          stream: service.leadsByStatus('Won'),
+        ),
+        _statCard(
+          title: 'Lost Deals',
+          icon: Icons.cancel_outlined,
+          color: Colors.redAccent,
+          stream: service.leadsByStatus('Lost'),
+        ),
+      ],
+    );
+  }
+
+  Widget _statCard({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required Stream<int> stream,
+  }) {
+    return StreamBuilder<int>(
+      stream: stream,
+      builder: (context, snapshot) {
+        final value = snapshot.data ?? 0;
+        return _DashboardCard(
+          icon: icon,
+          title: title,
+          value: value.toString(),
+          color: color,
+        );
       },
     );
   }
 }
 
 // =========================
-// DASHBOARD CARD
+// DASHBOARD CARD (UNCHANGED)
 // =========================
 class _DashboardCard extends StatelessWidget {
   final IconData icon;
