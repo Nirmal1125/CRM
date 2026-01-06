@@ -9,7 +9,7 @@ class Customer {
   final String city;
   final String orders;
   final String amountSpent;
-
+  final DateTime createdAt;
   Customer({
     required this.id,
     required this.name,
@@ -19,6 +19,7 @@ class Customer {
     required this.city,
     required this.orders,
     required this.amountSpent,
+    required this.createdAt,
   });
 
   factory Customer.fromDoc(DocumentSnapshot doc) {
@@ -33,6 +34,7 @@ class Customer {
       city: data['city'] ?? '',
       orders: data['orders'] ?? '',
       amountSpent: data['amountSpent'] ?? '',
+      createdAt: (data['createdAt'] as Timestamp?)!.toDate(),
     );
   }
 }

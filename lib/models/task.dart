@@ -6,9 +6,13 @@ class Task {
   final String description;
   final DateTime? dueDate;
   final String status;
+  final String priority;
   final String relatedType;
   final String relatedId;
   final String ownerId;
+
+  // 🔔 REMINDER (NEW – REQUIRED FOR EDIT REMINDER TIME)
+  final int reminderMinutes;
 
   Task({
     required this.id,
@@ -16,9 +20,11 @@ class Task {
     this.description = '',
     this.dueDate,
     this.status = 'Open',
+    this.priority = 'medium',
     this.relatedType = '',
     this.relatedId = '',
     this.ownerId = '',
+    this.reminderMinutes = 30, // ✅ DEFAULT (SAFE FOR OLD TASKS)
   });
 
   factory Task.fromDoc(DocumentSnapshot doc) {
@@ -30,9 +36,11 @@ class Task {
       description: data['description'] ?? '',
       dueDate: (data['dueDate'] as Timestamp?)?.toDate(),
       status: data['status'] ?? 'Open',
+      priority: data['priority'] ?? 'medium',
       relatedType: data['relatedType'] ?? '',
       relatedId: data['relatedId'] ?? '',
       ownerId: data['ownerId'] ?? '',
+      reminderMinutes: data['reminderMinutes'] ?? 30, // ✅ NEW
     );
   }
 
@@ -40,13 +48,13 @@ class Task {
     return {
       'title': title,
       'description': description,
-      'dueDate': dueDate != null
-          ? Timestamp.fromDate(dueDate!)
-          : FieldValue.serverTimestamp(),
+      'dueDate': dueDate != null ? Timestamp.fromDate(dueDate!) : null,
       'status': status,
+      'priority': priority,
       'relatedType': relatedType,
       'relatedId': relatedId,
       'ownerId': ownerId,
+      'reminderMinutes': reminderMinutes, // ✅ NEW
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };

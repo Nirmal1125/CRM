@@ -1,10 +1,12 @@
+import 'package:crm/screens/pdf_export_screen.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:crm/screens/customer_list_screen.dart';
 import 'package:crm/screens/leads_list_screen.dart';
 import 'package:crm/screens/task_list_screen.dart';
 import 'package:crm/services/dashboard_service.dart';
 import 'package:crm/utils/responsive.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import '../models/task.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -19,8 +21,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String get _title {
     switch (_selectedIndex) {
-      case 0:
-        return 'Dashboard';
       case 1:
         return 'Customers';
       case 2:
@@ -36,22 +36,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildBody(bool isWide) {
     switch (_selectedIndex) {
-      case 0:
-        return SizedBox.expand(
-          child: _DashboardGrid(isWide: isWide),
-        );
       case 1:
         return const CustomerListScreen();
       case 2:
         return const LeadsListScreen();
       case 3:
-        return TasksListScreen();
+        return const TasksListScreen();
       case 4:
-        return const Center(child: Text('Settings screen goes here'));
+        return const Center(child: Text('Settings'));
       default:
-        return SizedBox.expand(
-          child: _DashboardGrid(isWide: isWide),
-        );
+        return _DashboardGrid(isWide: isWide);
     }
   }
 
@@ -59,27 +53,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final isMobile = Responsive.isMobile(context);
     final isDesktop = Responsive.isDesktop(context);
-    final isWide = MediaQuery.of(context).size.width >= 900;
+    final isWide = MediaQuery.of(context).size.width >= 1000;
     final enableHover = kIsWeb && isDesktop;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F4F8),
       appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF262626),
-        title: Text(
-          'CRM – $_title',
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+  backgroundColor: Colors.white,
+  foregroundColor: const Color(0xFF262626),
+  elevation: 0,
+  title: Text('CRM – $_title'),
+  actions: [
+    Tooltip(
+      message: 'Export CRM Report',
+      child: IconButton(
+        icon: const Icon(
+          Icons.picture_as_pdf,
+          color: Colors.redAccent,
         ),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const PdfExportScreen(),
+            ),
+          );
+        },
       ),
+    ),
+    const SizedBox(width: 8),
+  ],
+),
+
       bottomNavigationBar: isMobile ? _buildBottomNav() : null,
       body: isMobile
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: _buildBody(false),
-              ),
+          ? Padding(
+              padding: const EdgeInsets.all(16),
+              child: _buildBody(false),
             )
           : Row(
               children: [
@@ -93,11 +103,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       )
                     : _buildNavigationRail(),
                 Expanded(
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: _buildBody(isWide),
-                    ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: _buildBody(isWide),
                   ),
                 ),
               ],
@@ -105,70 +113,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // =========================
-  // NAVIGATION RAIL
-  // =========================
   Widget _buildNavigationRail() {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       width: _isRailExtended ? 200 : 72,
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          right: BorderSide(color: Color(0xFFE4E1EC)),
-        ),
+        border: Border(right: BorderSide(color: Color(0xFFE4E1EC))),
       ),
       child: NavigationRail(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() => _selectedIndex = index);
-        },
+        onDestinationSelected: (i) => setState(() => _selectedIndex = i),
         extended: _isRailExtended,
         backgroundColor: Colors.white,
-        minExtendedWidth: 190,
-        labelType: NavigationRailLabelType.none,
-        leading: Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 24),
-          child: _isRailExtended
-              ? const Text(
-                  'CRM Panel',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF262626),
-                  ),
-                )
-              : const Icon(
-                  Icons.dashboard_outlined,
-                  color: Color(0xFF3F51B5),
-                ),
-        ),
         destinations: const [
           NavigationRailDestination(
-            icon: Icon(Icons.space_dashboard_outlined),
-            selectedIcon: Icon(Icons.space_dashboard),
-            label: Text('Dashboard'),
-          ),
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: Text('Dashboard')),
           NavigationRailDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: Text('Customers'),
-          ),
+              icon: Icon(Icons.people_outline),
+              selectedIcon: Icon(Icons.people),
+              label: Text('Customers')),
           NavigationRailDestination(
-            icon: Icon(Icons.scatter_plot_outlined),
-            selectedIcon: Icon(Icons.scatter_plot),
-            label: Text('Leads'),
-          ),
+              icon: Icon(Icons.scatter_plot_outlined),
+              selectedIcon: Icon(Icons.scatter_plot),
+              label: Text('Leads')),
           NavigationRailDestination(
-            icon: Icon(Icons.task_alt_outlined),
-            selectedIcon: Icon(Icons.task_alt),
-            label: Text('Tasks'),
-          ),
+              icon: Icon(Icons.task_alt_outlined),
+              selectedIcon: Icon(Icons.task_alt),
+              label: Text('Tasks')),
           NavigationRailDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: Text('Settings'),
-          ),
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings),
+              label: Text('Settings')),
         ],
       ),
     );
@@ -179,37 +157,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       currentIndex: _selectedIndex,
       onTap: (i) => setState(() => _selectedIndex = i),
       type: BottomNavigationBarType.fixed,
-      selectedItemColor: const Color(0xFF3F51B5),
-      unselectedItemColor: const Color(0xFF7A7A7A),
       items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.space_dashboard_outlined),
-          label: 'Dashboard',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.people_outline),
-          label: 'Customers',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.scatter_plot_outlined),
-          label: 'Leads',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.task_alt_outlined),
-          label: 'Tasks',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.settings_outlined),
-          label: 'Settings',
-        ),
+        BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
+        BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Customers'),
+        BottomNavigationBarItem(icon: Icon(Icons.scatter_plot), label: 'Leads'),
+        BottomNavigationBarItem(icon: Icon(Icons.task_alt), label: 'Tasks'),
+        BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
       ],
     );
   }
 }
 
-// =========================
-// DASHBOARD GRID (REAL DATA)
-// =========================
+// ================= DASHBOARD GRID =================
+
 class _DashboardGrid extends StatelessWidget {
   final bool isWide;
   const _DashboardGrid({required this.isWide});
@@ -218,116 +178,146 @@ class _DashboardGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final service = DashboardService();
 
-    return GridView(
-      padding: const EdgeInsets.all(8),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: isWide ? 3 : 2,
-        crossAxisSpacing: 20,
-        mainAxisSpacing: 20,
-        childAspectRatio: 1.2,
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: isWide ? 3 : 2,
+            crossAxisSpacing: 20,
+            mainAxisSpacing: 20,
+            childAspectRatio: 1.2,
+            children: [
+              _stat('Customers', Icons.people, Colors.indigo,
+                  service.customersCount()),
+              _stat('Leads', Icons.trending_up, Colors.green,
+                  service.leadsCount()),
+              _stat('Won Deals', Icons.check_circle, Colors.teal,
+                  service.leadsByStatus('Won')),
+              _stat('Lost Deals', Icons.cancel, Colors.redAccent,
+                  service.leadsByStatus('Lost')),
+              _stat('Tasks', Icons.task_alt, Colors.orange,
+                  service.tasksCount()),
+              _stat('Completed', Icons.done_all, Colors.green,
+                  service.completedTasksCount()),
+            ],
+          ),
+          const SizedBox(height: 32),
+
+          /// TODAY
+          _FollowUpSection(
+            title: "Today's Follow-ups",
+            stream: service.todayTasks(),
+            emptyText: "No follow-ups today 🎉",
+            filter: TaskFilter.today,
+          ),
+
+          const SizedBox(height: 24),
+
+          /// OVERDUE
+          _FollowUpSection(
+            title: "Overdue Tasks",
+            stream: service.overdueTasks(),
+            emptyText: "No overdue tasks",
+            filter: TaskFilter.overdue,
+          ),
+        ],
       ),
-      children: [
-        _statCard(
-          title: 'Total Customers',
-          icon: Icons.people_outline,
-          color: const Color(0xFF3F51B5),
-          stream: service.customersCount(),
-        ),
-        _statCard(
-          title: 'Total Leads',
-          icon: Icons.trending_up,
-          color: Colors.green,
-          stream: service.leadsCount(),
-        ),
-        _statCard(
-          title: 'Won Deals',
-          icon: Icons.check_circle_outline,
-          color: Colors.teal,
-          stream: service.leadsByStatus('Won'),
-        ),
-        _statCard(
-          title: 'Lost Deals',
-          icon: Icons.cancel_outlined,
-          color: Colors.redAccent,
-          stream: service.leadsByStatus('Lost'),
-        ),
-      ],
     );
   }
 
-  Widget _statCard({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required Stream<int> stream,
-  }) {
+  Widget _stat(
+      String title, IconData icon, Color color, Stream<int> stream) {
     return StreamBuilder<int>(
       stream: stream,
-      builder: (context, snapshot) {
-        final value = snapshot.data ?? 0;
-        return _DashboardCard(
-          icon: icon,
-          title: title,
-          value: value.toString(),
-          color: color,
+      builder: (_, snap) {
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, color: color),
+                const SizedBox(height: 8),
+                Text(title),
+                Text(
+                  (snap.data ?? 0).toString(),
+                  style:
+                      const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
   }
 }
 
-// =========================
-// DASHBOARD CARD (UNCHANGED)
-// =========================
-class _DashboardCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String value;
-  final Color color;
+// ================= FOLLOW-UP SECTION =================
 
-  const _DashboardCard({
-    required this.icon,
+class _FollowUpSection extends StatelessWidget {
+  final String title;
+  final Stream<List<Task>> stream;
+  final String emptyText;
+  final TaskFilter filter;
+
+  const _FollowUpSection({
     required this.title,
-    required this.value,
-    required this.color,
+    required this.stream,
+    required this.emptyText,
+    required this.filter,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE4E1EC)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Text(title)),
-            ],
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            style:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 12),
+        StreamBuilder<List<Task>>(
+          stream: stream,
+          builder: (_, snapshot) {
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return Text(emptyText,
+                  style: TextStyle(color: Colors.grey[600]));
+            }
+
+            return Column(
+              children: snapshot.data!.map((task) {
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.notifications_active,
+                        color: Colors.orange),
+                    title: Text(task.title),
+                    subtitle: task.dueDate != null
+                        ? Text(
+                            'Due: ${task.dueDate!.day}/${task.dueDate!.month}/${task.dueDate!.year}')
+                        : const Text('No due date'),
+                    onTap: () {
+                                 Navigator.push(
+                                     context,
+                                    MaterialPageRoute(
+                                builder: (_) => TasksListScreen(
+                            showBack: true,        // ✅ SHOW BACK ARROW
+                            initialFilter: filter, // ✅ Today / Overdue
+                             ),
+                            ),
+                           );
+                         },
+
+                  ),
+                );
+              }).toList(),
+            );
+          },
+        ),
+      ],
     );
   }
 }

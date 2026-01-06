@@ -18,11 +18,7 @@ class TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final due = task.dueDate;
-    final dueText = due == null
-        ? 'No due date'
-        : 'Due ${due.day}/${due.month}/${due.year}';
-
-    final bool completed = task.status == 'Completed';
+    final completed = task.status == 'Completed';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -40,7 +36,6 @@ class TaskCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ✔ STATUS ICON
           IconButton(
             icon: Icon(
               completed
@@ -53,11 +48,11 @@ class TaskCard extends StatelessWidget {
 
           const SizedBox(width: 8),
 
-          // 📝 CONTENT
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // TITLE
                 Text(
                   task.title,
                   style: TextStyle(
@@ -72,67 +67,101 @@ class TaskCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     task.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Colors.black54),
                   ),
                 ],
 
                 const SizedBox(height: 8),
 
-                Row(
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 6,
                   children: [
-                    // STATUS CHIP
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: completed
-                            ? const Color(0xFFD1FAE5)
-                            : const Color(0xFFDBEAFE),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        task.status,
-                        style: TextStyle(
+                    _statusChip(task.status),
+
+                    // 📅 DUE DATE + TIME
+                    if (due != null)
+                      Text(
+                        'Due ${_formatDateTime(context, due)}',
+                        style: const TextStyle(
                           fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: completed
-                              ? const Color(0xFF065F46)
-                              : const Color(0xFF1E40AF),
+                          color: Colors.black45,
                         ),
                       ),
-                    ),
 
-                    const SizedBox(width: 12),
-
-                    // DUE DATE
-                    Text(
-                      dueText,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black45,
+                    // 🔔 REMINDER INFO (ONLY ADDITION)
+                    if (due != null)
+                      Text(
+                        _reminderText(task.reminderMinutes),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black45,
+                        ),
                       ),
-                    ),
+
+                    if (task.relatedType.isNotEmpty)
+                      Text(
+                        '${task.relatedType} linked',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black45,
+                        ),
+                      ),
                   ],
                 ),
               ],
             ),
           ),
 
-          // ✏️ EDIT (DISABLED IF COMPLETED)
           IconButton(
             icon: const Icon(Icons.edit),
-            color: completed ? Colors.grey : Colors.blue,
             onPressed: completed ? null : onEdit,
-            tooltip:
-                completed ? 'Completed tasks cannot be edited' : 'Edit task',
           ),
-
-          // 🗑 DELETE
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.red),
             onPressed: onDelete,
           ),
         ],
+      ),
+    );
+  }
+
+  // ================= HELPERS =================
+
+  String _formatDateTime(BuildContext context, DateTime date) {
+    final time = TimeOfDay.fromDateTime(date).format(context);
+    return '${date.day}/${date.month}/${date.year} at $time';
+  }
+
+  String _reminderText(int minutes) {
+    if (minutes == 0) {
+      return '⏰ Reminder: At due time';
+    }
+    return '⏰ Reminder: $minutes min before';
+  }
+
+  Widget _statusChip(String status) {
+    final completed = status == 'Completed';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: completed
+            ? const Color(0xFFD1FAE5)
+            : const Color(0xFFDBEAFE),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: completed
+              ? const Color(0xFF065F46)
+              : const Color(0xFF1E40AF),
+        ),
       ),
     );
   }

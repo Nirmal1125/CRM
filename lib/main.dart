@@ -8,19 +8,32 @@ import 'package:crm/screen/add_task_screen.dart';
 import 'package:crm/screen/dashboard_ui.dart';
 import 'package:crm/screens/login_screen.dart';
 import 'package:crm/screens/signup_screen.dart';
+import 'package:crm/services/local_notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart'; 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
-  ); // Firebase initialization
-await auth.FirebaseAuth.instance.setPersistence(auth.Persistence.LOCAL);
+  );
 
+  // ✅ ONLY for Web
+  if (kIsWeb) {
+    await auth.FirebaseAuth.instance.setPersistence(
+      auth.Persistence.LOCAL,
+    );
+  }
+
+await LocalNotificationService.init();
+  
   runApp(const MyApp());
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

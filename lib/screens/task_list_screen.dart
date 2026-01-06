@@ -5,8 +5,17 @@ import '../widgets/task_card.dart';
 import '../models/task.dart';
 import '../utils/app_scroll_behavior.dart';
 
+enum TaskFilter { all, today, overdue, upcoming, completed }
+
 class TasksListScreen extends StatefulWidget {
-  const TasksListScreen({Key? key}) : super(key: key);
+  final bool showBack;          // ✅ NEW
+  final TaskFilter initialFilter; // ✅ NEW
+
+  const TasksListScreen({
+    Key? key,
+    this.showBack = false,
+    this.initialFilter = TaskFilter.all,
+  }) : super(key: key);
 
   @override
   State<TasksListScreen> createState() => _TasksListScreenState();
@@ -18,6 +27,13 @@ class _TasksListScreenState extends State<TasksListScreen> {
 
   Timer? _debounce;
   String _query = '';
+  late TaskFilter _filter; // ✅ late init
+
+  @override
+  void initState() {
+    super.initState();
+    _filter = widget.initialFilter; // ✅ set from dashboard
+  }
 
   @override
   void dispose() {
@@ -35,192 +51,168 @@ class _TasksListScreenState extends State<TasksListScreen> {
     });
   }
 
+  Stream<List<Task>> _getStream() {
+    switch (_filter) {
+      case TaskFilter.today:
+        return _service.streamTodayTasks();
+      case TaskFilter.overdue:
+        return _service.streamOverdueTasks();
+      case TaskFilter.upcoming:
+        return _service.streamUpcomingTasks();
+      case TaskFilter.completed:
+        return _service.streamCompletedTasks();
+      case TaskFilter.all:
+      default:
+        return _service.streamTasks();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-
-    final bool isMobile = width < 700;
-    final bool isTablet = width >= 700 && width < 1100;
-
-    final double horizontalPadding = isMobile
-        ? 16
-        : isTablet
-            ? 24
-            : 32;
-
-    final double maxContentWidth = isMobile
-        ? width
-        : isTablet
-            ? 900
-            : 1200;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF4F4F8),
+
+      // ✅ BACK ARROW ONLY WHEN OPENED FROM DASHBOARD
+      appBar: widget.showBack
+          ? AppBar(
+              title: const Text('Tasks'),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.pop(context),
+              ),
+            )
+          : null,
+
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxContentWidth),
-            child: Padding(
-              padding: EdgeInsets.all(horizontalPadding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // HEADER (unchanged)
+              if (!widget.showBack)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Tasks',
+                      style:
+                          TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () =>
+                          Navigator.pushNamed(context, '/add-task'),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Task'),
+                    ),
+                  ],
+                ),
+
+              const SizedBox(height: 16),
+
+              // SEARCH
+              TextField(
+                controller: _searchController,
+                onChanged: _onSearchChanged,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Search tasks',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // FILTERS
+              Wrap(
+                spacing: 8,
                 children: [
-                  // ================= HEADER =================
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'Tasks',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          SizedBox(height: 6),
-                          Text(
-                            'Manage and track your tasks',
-                            style: TextStyle(
-                              color: Color(0xFF6B7280),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () =>
-                            Navigator.pushNamed(context, '/add-task'),
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Add Task'),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ================= SEARCH =================
-                  TextField(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search),
-                      hintText: 'Search tasks',
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide:
-                            const BorderSide(color: Color(0xFFE5E7EB)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide:
-                            const BorderSide(color: Color(0xFFE5E7EB)),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ================= TASK LIST =================
-                  Expanded(
-                    child: StreamBuilder<List<Task>>(
-                      stream: _service.streamTasks(),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-
-                        final tasks = snapshot.data!;
-
-                        // 🔍 FILTER
-                        final filtered = tasks.where((t) {
-                          if (_query.isEmpty) return true;
-                          return t.title.toLowerCase().contains(_query) ||
-                              t.description.toLowerCase().contains(_query);
-                        }).toList();
-
-                        if (filtered.isEmpty) {
-                          return const Center(
-                            child: Text('No tasks found'),
-                          );
-                        }
-
-                        // 📌 Open first, completed last
-                        filtered.sort((a, b) {
-                          if (a.status == b.status) return 0;
-                          return a.status == 'Completed' ? 1 : -1;
-                        });
-
-                        return Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ScrollConfiguration(
-                            behavior: AppScrollBehavior(),
-                            child: ListView.separated(
-                              itemCount: filtered.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 12),
-                              itemBuilder: (_, i) {
-                                final task = filtered[i];
-                                final bool completed =
-                                    task.status == 'Completed';
-
-                                return TaskCard(
-                                  task: task,
-                                  onComplete: completed
-                                      ? () {}
-                                      : () =>
-                                          _service.markCompleted(task.id),
-                                  onDelete: () =>
-                                      _service.deleteTask(task.id),
-                                  onEdit: completed
-                                      ? () {}
-                                      : () {
-                                          Navigator.pushNamed(
-                                            context,
-                                            '/add-task',
-                                            arguments: {
-                                              'taskId': task.id,
-                                              'title': task.title,
-                                              'description':
-                                                  task.description,
-                                              'dueDate': task.dueDate,
-                                            },
-                                          );
-                                        },
-                                );
-                              },
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                  _chip('All', TaskFilter.all),
+                  _chip('Today', TaskFilter.today),
+                  _chip('Overdue', TaskFilter.overdue),
+                  _chip('Upcoming', TaskFilter.upcoming),
+                  _chip('Completed', TaskFilter.completed),
                 ],
               ),
-            ),
+
+              const SizedBox(height: 16),
+
+              // LIST
+              Expanded(
+                child: StreamBuilder<List<Task>>(
+                  stream: _getStream(),
+                  initialData: const [],
+                  builder: (context, snapshot) {
+                    final tasks = snapshot.data!
+                        .where((t) =>
+                            _query.isEmpty ||
+                            t.title.toLowerCase().contains(_query) ||
+                            t.description
+                                .toLowerCase()
+                                .contains(_query))
+                        .toList();
+
+                    if (tasks.isEmpty) {
+                      return const Center(child: Text('No tasks found'));
+                    }
+
+                    return ScrollConfiguration(
+                      behavior: AppScrollBehavior(),
+                      child: ListView.separated(
+                        itemCount: tasks.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 12),
+                        itemBuilder: (_, i) {
+                          final task = tasks[i];
+                          final completed = task.status == 'Completed';
+
+                          return TaskCard(
+                            task: task,
+                            onComplete: completed
+                                ? () {}
+                                : () => _service.markCompleted(task.id),
+                            onDelete: () =>
+                                _service.deleteTask(task.id),
+                            onEdit: completed
+                                ? () {}
+                                : () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/add-task',
+                                      arguments: {
+                                        'taskId': task.id,
+                                        'title': task.title,
+                                        'description': task.description,
+                                        'dueDate': task.dueDate,
+                                        'priority': task.priority,
+                                        'relatedType': task.relatedType,
+                                        'relatedId': task.relatedId,
+                                      },
+                                    );
+                                  },
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _chip(String label, TaskFilter value) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: _filter == value,
+      onSelected: (_) => setState(() => _filter = value),
     );
   }
 }
