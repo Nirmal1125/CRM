@@ -236,17 +236,48 @@ class _PdfExportScreenState extends State<PdfExportScreen> {
   }
 
   Future<void> _downloadPdf() async {
-    final pdfData = await _buildPdf();
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File(
-      '${dir.path}/CRM_Report_${DateTime.now().millisecondsSinceEpoch}.pdf',
-    );
-    await file.writeAsBytes(pdfData);
+  final pdfData = await _buildPdf();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('PDF saved to ${file.path}')),
-    );
+  late Directory directory;
+
+  if (Platform.isAndroid) {
+    // ✅ ANDROID → Public Downloads folder
+    directory = Directory('/storage/emulated/0/Download');
+  } else if (Platform.isIOS) {
+    // ❗ iOS does NOT allow access to Downloads
+    directory = await getApplicationDocumentsDirectory();
+  } else {
+    // ✅ Desktop (Windows / macOS / Linux)
+    directory = await getDownloadsDirectory() ??
+        await getApplicationDocumentsDirectory();
   }
+
+  final fileName =
+      'CRM_Report_${DateTime.now().millisecondsSinceEpoch}.pdf';
+  final file = File('${directory.path}/$fileName');
+
+  await file.writeAsBytes(pdfData);
+
+  // ✅ Success message
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        Platform.isIOS
+            ? 'PDF saved inside app documents'
+            : 'PDF saved to Downloads',
+      ),
+      action: SnackBarAction(
+        label: 'Open',
+        onPressed: () => Printing.sharePdf(
+          bytes: pdfData,
+          filename: fileName,
+        ),
+      ),
+    ),
+  );
+}
+
 
   // ================= UI =================
 

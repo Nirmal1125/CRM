@@ -1,4 +1,5 @@
 import 'package:crm/screens/pdf_export_screen.dart';
+import 'package:crm/screens/settings_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:crm/screens/customer_list_screen.dart';
@@ -43,7 +44,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 3:
         return const TasksListScreen();
       case 4:
-        return const Center(child: Text('Settings'));
+        return const SettingsScreen();
       default:
         return _DashboardGrid(isWide: isWide);
     }
