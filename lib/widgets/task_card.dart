@@ -15,154 +15,223 @@ class TaskCard extends StatelessWidget {
     required this.onEdit,
   }) : super(key: key);
 
+  // ================= DATE FORMATTER =================
+  String _formatDateTime(DateTime date) {
+    final now = DateTime.now();
+
+    final isToday =
+        date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+
+    final isTomorrow =
+        date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day + 1;
+
+    String day;
+    if (isToday) {
+      day = 'Today';
+    } else if (isTomorrow) {
+      day = 'Tomorrow';
+    } else {
+      day = '${_month(date.month)} ${date.day}, ${date.year}';
+    }
+
+    final hour =
+        date.hour == 0 ? 12 : date.hour > 12 ? date.hour - 12 : date.hour;
+    final minute = date.minute.toString().padLeft(2, '0');
+    final ampm = date.hour >= 12 ? 'PM' : 'AM';
+
+    return '$day · $hour:$minute $ampm';
+  }
+
+  String _month(int m) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return months[m - 1];
+  }
+
+  Color _priorityColor(BuildContext context) {
+    switch (task.priority.toLowerCase()) {
+      case 'high':
+        return Colors.red;
+      case 'medium':
+        return Colors.orange;
+      default:
+        return Theme.of(context).colorScheme.primary;
+    }
+  }
+
+  Color _statusColor(BuildContext context) {
+    return task.status == 'Completed'
+        ? Colors.green
+        : Theme.of(context).colorScheme.primary;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final due = task.dueDate;
+    final theme = Theme.of(context);
     final completed = task.status == 'Completed';
+    final priorityColor = _priorityColor(context);
+    final statusColor = _statusColor(context);
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.surface,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        side: BorderSide(color: theme.dividerColor),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          IconButton(
-            icon: Icon(
-              completed
-                  ? Icons.check_circle
-                  : Icons.radio_button_unchecked,
-              color: completed ? Colors.green : Colors.grey,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // COMPLETE ICON
+            IconButton(
+              icon: Icon(
+                completed
+                    ? Icons.check_circle
+                    : Icons.radio_button_unchecked,
+                color: completed ? Colors.green : theme.iconTheme.color,
+              ),
+              onPressed: completed ? null : onComplete,
             ),
-            onPressed: completed ? null : onComplete,
-          ),
 
-          const SizedBox(width: 8),
+            const SizedBox(width: 8),
 
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            // MAIN CONTENT
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // TITLE
+                  Text(
+                    task.title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      decoration:
+                          completed ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+
+                  if (task.description.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      task.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+
+                  const SizedBox(height: 10),
+
+                  // META INFO
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 6,
+                    children: [
+                      _meta(
+                        context,
+                        Icons.flag,
+                        'Priority: ${task.priority}',
+                        priorityColor,
+                      ),
+
+                      if (task.dueDate != null)
+                        _meta(
+                          context,
+                          Icons.calendar_today,
+                          'Due: ${_formatDateTime(task.dueDate!)}',
+                          theme.hintColor,
+                        ),
+
+                      _meta(
+                        context,
+                        Icons.alarm,
+                        'Reminder: ${task.reminderMinutes} min',
+                        theme.hintColor,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // RIGHT ACTIONS
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // TITLE
-                Text(
-                  task.title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    decoration:
-                        completed ? TextDecoration.lineThrough : null,
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    task.status,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
 
-                if (task.description.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    task.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.black54),
-                  ),
-                ],
-
                 const SizedBox(height: 8),
 
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 6,
-                  children: [
-                    _statusChip(task.status),
-
-                    // 📅 DUE DATE + TIME
-                    if (due != null)
-                      Text(
-                        'Due ${_formatDateTime(context, due)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black45,
-                        ),
+                PopupMenuButton<String>(
+                  onSelected: (v) {
+                    if (v == 'edit') onEdit();
+                    if (v == 'delete') onDelete();
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text(
+                        'Delete',
+                        style: TextStyle(color: Colors.red),
                       ),
-
-                    // 🔔 REMINDER INFO (ONLY ADDITION)
-                    if (due != null)
-                      Text(
-                        _reminderText(task.reminderMinutes),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black45,
-                        ),
-                      ),
-
-                    if (task.relatedType.isNotEmpty)
-                      Text(
-                        '${task.relatedType} linked',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black45,
-                        ),
-                      ),
+                    ),
                   ],
                 ),
               ],
             ),
-          ),
-
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: completed ? null : onEdit,
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
-            onPressed: onDelete,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // ================= HELPERS =================
+  // ================= META ROW (FIXED) =================
+  Widget _meta(
+    BuildContext context,
+    IconData icon,
+    String text,
+    Color color,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 6),
 
-  String _formatDateTime(BuildContext context, DateTime date) {
-    final time = TimeOfDay.fromDateTime(date).format(context);
-    return '${date.day}/${date.month}/${date.year} at $time';
-  }
-
-  String _reminderText(int minutes) {
-    if (minutes == 0) {
-      return '⏰ Reminder: At due time';
-    }
-    return '⏰ Reminder: $minutes min before';
-  }
-
-  Widget _statusChip(String status) {
-    final completed = status == 'Completed';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: completed
-            ? const Color(0xFFD1FAE5)
-            : const Color(0xFFDBEAFE),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: completed
-              ? const Color(0xFF065F46)
-              : const Color(0xFF1E40AF),
+        // ✅ THIS IS THE FIX
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ),
-      ),
+      ],
     );
   }
 }

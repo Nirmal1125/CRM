@@ -6,6 +6,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart';
 
+// 🔥 Firebase (ALIased to avoid conflict)
+import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
@@ -22,7 +27,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool _isLoading = false;
   bool _showPassword = false;
+  bool _showConfirmPassword = false; // ✅ ADDED
   bool _isHoveringGoogle = false;
+
+  final fb.FirebaseAuth _auth = fb.FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email']);
 
   @override
   void dispose() {
@@ -36,9 +46,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Future<void> _onSignUp() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final auth = Provider.of<AuthProvider>(context, listen: false);
+    setState(() => _isLoading = true);
 
-    final result = await auth.signUpWithEmail(
+    final authProvider =
+        Provider.of<AuthProvider>(context, listen: false);
+
+    final result = await authProvider.signUpWithEmail(
       _nameCtrl.text.trim(),
       _emailCtrl.text.trim(),
       _passwordCtrl.text.trim(),
@@ -46,11 +59,55 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     if (!mounted) return;
 
+    setState(() => _isLoading = false);
+
     if (result != null) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(result)));
     } else {
       Navigator.pushReplacementNamed(context, '/dashboard');
+    }
+  }
+
+  Future<void> _signUpWithGoogle() async {
+    try {
+      await _googleSignIn.signOut();
+
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return;
+
+      final googleAuth = await googleUser.authentication;
+
+      final credential = fb.GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+        accessToken: googleAuth.accessToken,
+      );
+
+      final userCred =
+          await _auth.signInWithCredential(credential);
+
+      final user = userCred.user;
+      if (user == null) return;
+
+      final docRef =
+          _firestore.collection('users').doc(user.uid);
+      final doc = await docRef.get();
+
+      if (!doc.exists) {
+        await docRef.set({
+          'username': user.displayName ?? '',
+          'email': user.email,
+          'createdAt': DateTime.now(),
+          'provider': 'google',
+        });
+      }
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/dashboard');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -103,7 +160,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.02),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.04)),
+                  border:
+                      Border.all(color: Colors.white.withOpacity(0.04)),
                 ),
                 child: Image.asset(
                   'assets/signup_art.png',
@@ -162,7 +220,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   color: Colors.white.withOpacity(0.04),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.arrow_back, color: Colors.white),
+                child:
+                    const Icon(Icons.arrow_back, color: Colors.white),
               ),
             ),
             const SizedBox(width: 12),
@@ -188,6 +247,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               _textField(_emailCtrl, 'Email'),
               const SizedBox(height: 12),
 
+              /// PASSWORD
               TextFormField(
                 controller: _passwordCtrl,
                 obscureText: !_showPassword,
@@ -209,7 +269,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               const SizedBox(height: 12),
 
-              _textField(_confirmCtrl, 'Confirm password'),
+              /// ✅ CONFIRM PASSWORD (NOW WITH EYE ICON)
+              TextFormField(
+                controller: _confirmCtrl,
+                obscureText: !_showConfirmPassword,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration(
+                  label: 'Confirm password',
+                  suffix: IconButton(
+                    icon: Icon(
+                      _showConfirmPassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: Colors.white70,
+                    ),
+                    onPressed: () => setState(
+                        () => _showConfirmPassword = !_showConfirmPassword),
+                  ),
+                ),
+              ),
 
               const SizedBox(height: 20),
 
@@ -228,7 +306,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   child: Ink(
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF3DD3C9), Color(0xFF2A9DF4)],
+                        colors: [
+                          Color(0xFF3DD3C9),
+                          Color(0xFF2A9DF4)
+                        ],
                       ),
                       borderRadius: BorderRadius.circular(28),
                     ),
@@ -237,7 +318,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ? const SizedBox(
                               width: 22,
                               height: 22,
-                              child: CircularProgressIndicator.adaptive(),
+                              child:
+                                  CircularProgressIndicator.adaptive(),
                             )
                           : Text(
                               'Create account',
@@ -261,31 +343,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 onExit: enableHover
                     ? (_) => setState(() => _isHoveringGoogle = false)
                     : null,
-                child: AnimatedScale(
-                  scale:
-                      enableHover && _isHoveringGoogle ? 1.07 : 1.0,
-                  duration: const Duration(milliseconds: 200),
+                child: GestureDetector(
+                  onTap: _signUpWithGoogle,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(
                         horizontal: 22, vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(
-                        enableHover && _isHoveringGoogle ? 0.12 : 0.08,
-                      ),
+                          _isHoveringGoogle ? 0.12 : 0.08),
                       borderRadius: BorderRadius.circular(40),
                       border: Border.all(
                           color: Colors.white.withOpacity(0.12)),
-                      boxShadow: enableHover && _isHoveringGoogle
-                          ? [
-                              BoxShadow(
-                                color:
-                                    Colors.white.withOpacity(0.12),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              )
-                            ]
-                          : [],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -294,10 +363,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           width: 32,
                           height: 32,
                           decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle),
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
                           child: Padding(
-                            padding: const EdgeInsets.all(4.0),
+                            padding: const EdgeInsets.all(4),
                             child: Image.asset(
                               'assets/google_logo.png',
                               fit: BoxFit.contain,

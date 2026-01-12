@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../services/task_service.dart';
+import 'package:provider/provider.dart';
+import '../provider/task_provider.dart';
 import '../widgets/task_card.dart';
 import '../models/task.dart';
 import '../utils/app_scroll_behavior.dart';
@@ -8,8 +9,8 @@ import '../utils/app_scroll_behavior.dart';
 enum TaskFilter { all, today, overdue, upcoming, completed }
 
 class TasksListScreen extends StatefulWidget {
-  final bool showBack;          // ✅ NEW
-  final TaskFilter initialFilter; // ✅ NEW
+  final bool showBack;
+  final TaskFilter initialFilter;
 
   const TasksListScreen({
     Key? key,
@@ -22,17 +23,15 @@ class TasksListScreen extends StatefulWidget {
 }
 
 class _TasksListScreenState extends State<TasksListScreen> {
-  final TaskService _service = TaskService();
   final TextEditingController _searchController = TextEditingController();
-
   Timer? _debounce;
   String _query = '';
-  late TaskFilter _filter; // ✅ late init
+  late TaskFilter _filter;
 
   @override
   void initState() {
     super.initState();
-    _filter = widget.initialFilter; // ✅ set from dashboard
+    _filter = widget.initialFilter;
   }
 
   @override
@@ -51,54 +50,56 @@ class _TasksListScreenState extends State<TasksListScreen> {
     });
   }
 
-  Stream<List<Task>> _getStream() {
+  List<Task> _filteredTasks(TaskProvider provider) {
+    List<Task> list;
     switch (_filter) {
       case TaskFilter.today:
-        return _service.streamTodayTasks();
+        list = provider.todayTasks();
+        break;
       case TaskFilter.overdue:
-        return _service.streamOverdueTasks();
+        list = provider.overdueTasks();
+        break;
       case TaskFilter.upcoming:
-        return _service.streamUpcomingTasks();
+        list = provider.upcomingTasks();
+        break;
       case TaskFilter.completed:
-        return _service.streamCompletedTasks();
-      case TaskFilter.all:
+        list = provider.completedTasks();
+        break;
       default:
-        return _service.streamTasks();
+        list = provider.tasks;
     }
+
+    return list.where((t) =>
+        _query.isEmpty ||
+        t.title.toLowerCase().contains(_query) ||
+        t.description.toLowerCase().contains(_query)).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F4F8),
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isWide = MediaQuery.of(context).size.width >= 900;
 
-      // ✅ BACK ARROW ONLY WHEN OPENED FROM DASHBOARD
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: widget.showBack
           ? AppBar(
               title: const Text('Tasks'),
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.pop(context),
-              ),
+              leading: const BackButton(),
             )
           : null,
-
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(isWide ? 24 : 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // HEADER (unchanged)
               if (!widget.showBack)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Tasks',
-                      style:
-                          TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
-                    ),
+                    Text('Tasks', style: theme.textTheme.headlineMedium),
                     ElevatedButton.icon(
                       onPressed: () =>
                           Navigator.pushNamed(context, '/add-task'),
@@ -110,51 +111,49 @@ class _TasksListScreenState extends State<TasksListScreen> {
 
               const SizedBox(height: 16),
 
-              // SEARCH
               TextField(
                 controller: _searchController,
                 onChanged: _onSearchChanged,
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
                   hintText: 'Search tasks',
+                  prefixIcon: const Icon(Icons.search),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor:
+                      isDark ? theme.colorScheme.surface : Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
                   ),
                 ),
               ),
 
               const SizedBox(height: 12),
 
-              // FILTERS
-              Wrap(
-                spacing: 8,
-                children: [
-                  _chip('All', TaskFilter.all),
-                  _chip('Today', TaskFilter.today),
-                  _chip('Overdue', TaskFilter.overdue),
-                  _chip('Upcoming', TaskFilter.upcoming),
-                  _chip('Completed', TaskFilter.completed),
-                ],
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _chipFilter('All', TaskFilter.all),
+                    _chipFilter('Today', TaskFilter.today),
+                    _chipFilter('Overdue', TaskFilter.overdue),
+                    _chipFilter('Upcoming', TaskFilter.upcoming),
+                    _chipFilter('Completed', TaskFilter.completed),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 16),
 
-              // LIST
               Expanded(
-                child: StreamBuilder<List<Task>>(
-                  stream: _getStream(),
-                  initialData: const [],
-                  builder: (context, snapshot) {
-                    final tasks = snapshot.data!
-                        .where((t) =>
-                            _query.isEmpty ||
-                            t.title.toLowerCase().contains(_query) ||
-                            t.description
-                                .toLowerCase()
-                                .contains(_query))
-                        .toList();
+                child: Consumer<TaskProvider>(
+                  builder: (_, provider, __) {
+                    if (provider.loading) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+
+                    final tasks = _filteredTasks(provider);
 
                     if (tasks.isEmpty) {
                       return const Center(child: Text('No tasks found'));
@@ -168,32 +167,31 @@ class _TasksListScreenState extends State<TasksListScreen> {
                             const SizedBox(height: 12),
                         itemBuilder: (_, i) {
                           final task = tasks[i];
-                          final completed = task.status == 'Completed';
-
                           return TaskCard(
                             task: task,
-                            onComplete: completed
+                            onComplete: task.status == 'Completed'
                                 ? () {}
-                                : () => _service.markCompleted(task.id),
+                                : () =>
+                                    provider.markCompleted(task.id),
                             onDelete: () =>
-                                _service.deleteTask(task.id),
-                            onEdit: completed
-                                ? () {}
-                                : () {
-                                    Navigator.pushNamed(
-                                      context,
-                                      '/add-task',
-                                      arguments: {
-                                        'taskId': task.id,
-                                        'title': task.title,
-                                        'description': task.description,
-                                        'dueDate': task.dueDate,
-                                        'priority': task.priority,
-                                        'relatedType': task.relatedType,
-                                        'relatedId': task.relatedId,
-                                      },
-                                    );
-                                  },
+                                provider.deleteTask(task.id),
+                            onEdit: () {
+                              Navigator.pushNamed(
+                                context,
+                                '/add-task',
+                                arguments: {
+                                  'taskId': task.id,
+                                  'title': task.title,
+                                  'description': task.description,
+                                  'dueDate': task.dueDate,
+                                  'priority': task.priority,
+                                  'relatedType': task.relatedType,
+                                  'relatedId': task.relatedId,
+                                  'reminderMinutes':
+                                      task.reminderMinutes,
+                                },
+                              );
+                            },
                           );
                         },
                       ),
@@ -208,11 +206,40 @@ class _TasksListScreenState extends State<TasksListScreen> {
     );
   }
 
-  Widget _chip(String label, TaskFilter value) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: _filter == value,
-      onSelected: (_) => setState(() => _filter = value),
+  Widget _chipFilter(String label, TaskFilter value) {
+    final theme = Theme.of(context);
+    final selected = _filter == value;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => setState(() => _filter = value),
+        child: Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            color: selected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.surface,
+            border: Border.all(
+              color: selected
+                  ? theme.colorScheme.primary
+                  : theme.dividerColor,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: selected
+                  ? theme.colorScheme.onPrimary
+                  : theme.colorScheme.onSurface,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

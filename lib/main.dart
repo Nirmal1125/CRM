@@ -2,7 +2,11 @@
 import 'package:crm/auth_wrapper.dart';
 import 'package:crm/firebase_options.dart';
 import 'package:crm/provider/auth_provider.dart';
+import 'package:crm/provider/customer_provider.dart';
+import 'package:crm/provider/dashboard_provider.dart';
+import 'package:crm/provider/lead_provider.dart';
 import 'package:crm/provider/settings_provider.dart'; // ✅ ADD
+import 'package:crm/provider/task_provider.dart';
 import 'package:crm/screen/add_customer_screen.dart';
 import 'package:crm/screen/add_lead_screen.dart';
 import 'package:crm/screen/add_task_screen.dart';
@@ -54,22 +58,57 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  ThemeData _buildDarkTheme() {
-    return ThemeData.dark().copyWith(
-      primaryColor: Colors.indigo,
-      colorScheme: const ColorScheme.dark(
-        primary: Colors.indigo,
-        secondary: Colors.indigoAccent,
-      ),
-    );
-  }
+ThemeData _buildDarkTheme() {
+  return ThemeData(
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: const Color(0xFF0F0F0F), // YouTube dark
+    cardColor: const Color(0xFF1C1C1E),
+    dividerColor: Colors.white12,
+
+    colorScheme: const ColorScheme.dark(
+      primary: Color(0xFF5B6CFF),
+      secondary: Color(0xFF5B6CFF),
+      background: Color(0xFF0F0F0F),
+      surface: Color(0xFF1C1C1E),
+      onBackground: Colors.white,
+      onSurface: Colors.white,
+    ),
+
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF0F0F0F),
+      foregroundColor: Colors.white,
+      elevation: 0,
+      iconTheme: IconThemeData(color: Colors.white),
+    ),
+
+    iconTheme: const IconThemeData(color: Colors.white70),
+
+    textTheme: const TextTheme(
+      bodyMedium: TextStyle(color: Colors.white),
+      bodySmall: TextStyle(color: Colors.white70),
+      titleMedium: TextStyle(color: Colors.white),
+      titleLarge: TextStyle(color: Colors.white),
+    ),
+
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.all(Color(0xFF5B6CFF)),
+      trackColor: WidgetStateProperty.all(Color(0xFF5B6CFF).withOpacity(.4)),
+    ),
+  );
+}
+
+
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => SettingsProvider()), // ✅ ADD
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => DashboardProvider()),
+        ChangeNotifierProvider(create: (_) => TaskProvider()),
+        ChangeNotifierProvider(create: (_) => LeadProvider()),
+        ChangeNotifierProvider(create: (_) => CustomerProvider()),
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settings, _) {

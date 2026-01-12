@@ -6,10 +6,7 @@ class DashboardService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // =========================
-  // BASE TASK STREAM
-  // =========================
-  Stream<List<Task>> _allTasks() {
+  Stream<List<Task>> allTasks() {
     final user = _auth.currentUser;
     if (user == null) return Stream.value([]);
 
@@ -20,9 +17,6 @@ class DashboardService {
         .map((s) => s.docs.map(Task.fromDoc).toList());
   }
 
-  // =========================
-  // COUNTS
-  // =========================
   Stream<int> customersCount() {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return Stream.value(0);
@@ -55,49 +49,5 @@ class DashboardService {
         .where('status', isEqualTo: status)
         .snapshots()
         .map((s) => s.size);
-  }
-
-  Stream<int> tasksCount() {
-    return _allTasks().map((tasks) => tasks.length);
-  }
-
-  Stream<int> completedTasksCount() {
-    return _allTasks()
-        .map((tasks) => tasks.where((t) => t.status == 'Completed').length);
-  }
-
-  // =========================
-  // TODAY FOLLOW-UPS (FIXED)
-  // =========================
-  Stream<List<Task>> todayTasks() {
-    final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day);
-    final end = start.add(const Duration(days: 1));
-
-    return _allTasks().map((tasks) {
-      return tasks.where((t) {
-        if (t.status == 'Completed') return false;
-        if (t.dueDate == null) return false;
-
-        return !t.dueDate!.isBefore(start) &&
-            t.dueDate!.isBefore(end);
-      }).toList();
-    });
-  }
-
-  // =========================
-  // OVERDUE TASKS
-  // =========================
-  Stream<List<Task>> overdueTasks() {
-    final now = DateTime.now();
-
-    return _allTasks().map((tasks) {
-      return tasks.where((t) {
-        if (t.status == 'Completed') return false;
-        if (t.dueDate == null) return false;
-
-        return t.dueDate!.isBefore(now);
-      }).toList();
-    });
   }
 }

@@ -1,6 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../services/task_service.dart';
+import 'package:provider/provider.dart';
+import '../provider/task_provider.dart';
 
 class AddTaskScreen extends StatefulWidget {
   const AddTaskScreen({Key? key}) : super(key: key);
@@ -11,26 +11,20 @@ class AddTaskScreen extends StatefulWidget {
 
 class _AddTaskScreenState extends State<AddTaskScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _service = TaskService();
 
   final _title = TextEditingController();
   final _desc = TextEditingController();
 
   DateTime? _dueDate;
-  TimeOfDay? _dueTime; // ✅ NEW (ONLY ADDITION)
-  int _reminderMinutes = 30; // ✅ NEW
+  TimeOfDay? _dueTime;
+  int _reminderMinutes = 30;
+
   String? _taskId;
   bool _isEdit = false;
-
   String _priority = 'medium';
 
-  // ================= RELATION =================
   String _relatedType = 'None';
   String? _relatedId;
-
-  String _originalRelatedType = '';
-  String _originalRelatedId = '';
-  
 
   @override
   void didChangeDependencies() {
@@ -46,16 +40,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       _dueDate = args['dueDate'];
       _priority = args['priority'] ?? 'medium';
       _reminderMinutes = args['reminderMinutes'] ?? 30;
-
       _relatedType =
           (args['relatedType'] == null || args['relatedType'] == '')
               ? 'None'
               : args['relatedType'];
       _relatedId = args['relatedId'];
-
-      _originalRelatedType = args['relatedType'] ?? '';
-      _originalRelatedId = args['relatedId'] ?? '';
-
       _isEdit = true;
     }
   }
@@ -67,7 +56,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     super.dispose();
   }
 
-  // ================= DATE PICKER =================
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -78,20 +66,15 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     if (picked != null) setState(() => _dueDate = picked);
   }
 
-  // ================= TIME PICKER (NEW) =================
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _dueTime ?? TimeOfDay.now(),
-    );
+    final picked =
+        await showTimePicker(context: context, initialTime: TimeOfDay.now());
     if (picked != null) setState(() => _dueTime = picked);
   }
 
-  // ================= SAVE =================
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // ✅ COMBINE DATE + TIME (IMPORTANT)
     DateTime? finalDueDate;
     if (_dueDate != null) {
       final time = _dueTime ?? const TimeOfDay(hour: 9, minute: 0);
@@ -104,230 +87,187 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       );
     }
 
-    final finalRelatedType =
-        _relatedType == 'None' ? _originalRelatedType : _relatedType;
-    final finalRelatedId =
-        _relatedType == 'None' ? _originalRelatedId : _relatedId ?? '';
+    final provider = context.read<TaskProvider>();
 
     if (_isEdit) {
-  await _service.updateTask(
-    taskId: _taskId!,
-    title: _title.text.trim(),
-    description: _desc.text.trim(),
-    dueDate: finalDueDate,
-    priority: _priority,
-    relatedType: finalRelatedType,
-    relatedId: finalRelatedId,
-    reminderMinutes: _reminderMinutes, // ✅
-  );
-} else {
-  await _service.addTask(
-    title: _title.text.trim(),
-    description: _desc.text.trim(),
-    dueDate: finalDueDate,
-    priority: _priority,
-    relatedType: _relatedType == 'None' ? '' : _relatedType,
-    relatedId: _relatedId ?? '',
-    reminderMinutes: _reminderMinutes, // ✅
-  );
-}
-
+      await provider.updateTask(
+        taskId: _taskId!,
+        title: _title.text.trim(),
+        description: _desc.text.trim(),
+        dueDate: finalDueDate,
+        priority: _priority,
+        relatedType: _relatedType == 'None' ? '' : _relatedType,
+        relatedId: _relatedId ?? '',
+        reminderMinutes: _reminderMinutes,
+      );
+    } else {
+      await provider.addTask(
+        title: _title.text.trim(),
+        description: _desc.text.trim(),
+        dueDate: finalDueDate,
+        priority: _priority,
+        relatedType: _relatedType == 'None' ? '' : _relatedType,
+        relatedId: _relatedId ?? '',
+        reminderMinutes: _reminderMinutes,
+      );
+    }
 
     if (mounted) Navigator.pop(context);
   }
 
-  // ================= FETCH RELATED =================
-  Stream<QuerySnapshot<Map<String, dynamic>>> _relatedStream() {
-    if (_relatedType == 'lead') {
-      return FirebaseFirestore.instance
-          .collection('leads')
-          .where('status', isNotEqualTo: 'Converted')
-          .snapshots();
-    }
-    if (_relatedType == 'customer') {
-      return FirebaseFirestore.instance.collection('customers').snapshots();
-    }
-    return const Stream.empty();
+  InputDecoration _fieldDecoration(BuildContext context, String label) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor:
+          isDark ? theme.colorScheme.surface : const Color(0xFFF8F9FF),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide:
+            BorderSide(color: Colors.grey.withOpacity(0.4), width: 1),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide:
+            BorderSide(color: Colors.grey.withOpacity(0.35), width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide:
+            BorderSide(color: theme.colorScheme.primary, width: 1.6),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 800;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F4F8),
-      appBar: AppBar(title: Text(_isEdit ? 'Edit Task' : 'Add Task')),
+      appBar: AppBar(
+        title: Text(_isEdit ? 'Edit Task' : 'Add Task'),
+      ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: ConstrainedBox(
-            constraints:
-                BoxConstraints(maxWidth: isWide ? 600 : double.infinity),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 550),
+            padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+            decoration: BoxDecoration(
+              color: theme.brightness == Brightness.dark
+                  ? theme.colorScheme.surface
+                  : const Color(0xFFF8F9FF),
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Form(
               key: _formKey,
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Task Details',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _isEdit ? 'Edit task' : 'Add new task',
+                    style: theme.textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 28),
 
-                    TextFormField(
-                      controller: _title,
-                      decoration: _inputDecoration('Task title'),
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty
-                              ? 'Title is required'
-                              : null,
-                    ),
+                  TextFormField(
+                    controller: _title,
+                    decoration:
+                        _fieldDecoration(context, 'Task title'),
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Enter title' : null,
+                  ),
+                  const SizedBox(height: 16),
 
-                    const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _desc,
+                    maxLines: 4,
+                    decoration:
+                        _fieldDecoration(context, 'Description'),
+                  ),
+                  const SizedBox(height: 16),
 
-                    TextField(
-                      controller: _desc,
-                      maxLines: 4,
-                      decoration: _inputDecoration('Description'),
-                    ),
+                  DropdownButtonFormField<String>(
+                    value: _priority,
+                    decoration:
+                        _fieldDecoration(context, 'Priority'),
+                    items: const [
+                      DropdownMenuItem(value: 'low', child: Text('Low')),
+                      DropdownMenuItem(
+                          value: 'medium', child: Text('Medium')),
+                      DropdownMenuItem(
+                          value: 'high', child: Text('High')),
+                    ],
+                    onChanged: (v) =>
+                        setState(() => _priority = v!),
+                  ),
+                  const SizedBox(height: 16),
 
-                    const SizedBox(height: 20),
+                  DropdownButtonFormField<int>(
+                    value: _reminderMinutes,
+                    decoration:
+                        _fieldDecoration(context, 'Reminder'),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 0, child: Text('At due time')),
+                      DropdownMenuItem(
+                          value: 15, child: Text('15 min before')),
+                      DropdownMenuItem(
+                          value: 30, child: Text('30 min before')),
+                      DropdownMenuItem(
+                          value: 60, child: Text('1 hour before')),
+                    ],
+                    onChanged: (v) =>
+                        setState(() => _reminderMinutes = v!),
+                  ),
+                  const SizedBox(height: 16),
 
-                    DropdownButtonFormField<String>(
-                      value: _priority,
-                      decoration: _inputDecoration('Priority'),
-                      items: const [
-                        DropdownMenuItem(value: 'low', child: Text('Low')),
-                        DropdownMenuItem(value: 'medium', child: Text('Medium')),
-                        DropdownMenuItem(value: 'high', child: Text('High')),
-                      ],
-                      onChanged: (v) => setState(() => _priority = v!),
-                    ),
-const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _dueDate == null
+                              ? 'No due date selected'
+                              : 'Due ${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}'
+                                  '${_dueTime != null ? ' at ${_dueTime!.format(context)}' : ''}',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                      TextButton(
+                          onPressed: _pickDate,
+                          child: const Text('Pick date')),
+                      TextButton(
+                          onPressed: _pickTime,
+                          child: const Text('Pick time')),
+                    ],
+                  ),
 
-DropdownButtonFormField<int>(
-  value: _reminderMinutes,
-  decoration: _inputDecoration('Reminder'),
-  items: const [
-    DropdownMenuItem(value: 0, child: Text('At due time')),
-    DropdownMenuItem(value: 5, child: Text('5 minutes before')),
-    DropdownMenuItem(value: 15, child: Text('15 minutes before')),
-    DropdownMenuItem(value: 30, child: Text('30 minutes before')),
-    DropdownMenuItem(value: 60, child: Text('1 hour before')),
-  ],
-  onChanged: (v) => setState(() => _reminderMinutes = v!),
-),
+                  const SizedBox(height: 28),
 
-                    const SizedBox(height: 20),
-
-                    DropdownButtonFormField<String>(
-                      value: _relatedType,
-                      decoration: _inputDecoration('Related to'),
-                      items: const [
-                        DropdownMenuItem(value: 'None', child: Text('None')),
-                        DropdownMenuItem(value: 'lead', child: Text('Lead')),
-                        DropdownMenuItem(
-                            value: 'customer', child: Text('Customer')),
-                      ],
-                      onChanged: (v) {
-                        setState(() {
-                          _relatedType = v!;
-                          _relatedId = null;
-                        });
-                      },
-                    ),
-
-                    if (_relatedType != 'None') ...[
-                      const SizedBox(height: 16),
-                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                        stream: _relatedStream(),
-                        builder: (_, snap) {
-                          if (!snap.hasData) {
-                            return const CircularProgressIndicator();
-                          }
-
-                          return DropdownButtonFormField<String>(
-                            value: _relatedId,
-                            decoration:
-                                _inputDecoration('Select $_relatedType'),
-                            items: snap.data!.docs.map((d) {
-                              return DropdownMenuItem(
-                                value: d.id,
-                                child: Text(d['name'] ?? 'Unnamed'),
-                              );
-                            }).toList(),
-                            onChanged: (v) =>
-                                setState(() => _relatedId = v),
-                          );
-                        },
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        onPressed: _save,
+                        child: Text(
+                            _isEdit ? 'Save changes' : 'Add task'),
                       ),
                     ],
-
-                    const SizedBox(height: 20),
-
-                    // ============ DATE + TIME (UI UNCHANGED) ============
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF9FAFB),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.calendar_today, size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _dueDate == null
-                                  ? 'No due date selected'
-                                  : 'Due: ${_dueDate!.day}/${_dueDate!.month}/${_dueDate!.year}'
-                                      '${_dueTime != null ? ' at ${_dueTime!.format(context)}' : ''}',
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: _pickDate,
-                            child: const Text('Pick date'),
-                          ),
-                          TextButton(
-                            onPressed: _pickTime,
-                            child: const Text('Pick time'),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _save,
-                        child:
-                            Text(_isEdit ? 'Update Task' : 'Add Task'),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
       ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: const Color(0xFFF9FAFB),
-      border:
-          OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 }

@@ -20,8 +20,6 @@ class _PdfExportScreenState extends State<PdfExportScreen> {
   DateTime? startDate;
   DateTime? endDate;
 
-  // ================= DATE PICKER =================
-
   Future<void> _pickDate(bool isStart) async {
     final picked = await showDatePicker(
       context: context,
@@ -40,15 +38,9 @@ class _PdfExportScreenState extends State<PdfExportScreen> {
     }
 
     setState(() {
-      if (isStart) {
-        startDate = picked;
-      } else {
-        endDate = picked;
-      }
+      isStart ? startDate = picked : endDate = picked;
     });
   }
-
-  // ================= FIRESTORE FETCH =================
 
   Future<List<Map<String, dynamic>>> _fetchCollection(
     String collection,
@@ -77,8 +69,6 @@ class _PdfExportScreenState extends State<PdfExportScreen> {
         .toList();
   }
 
-  // ================= BUILD PDF =================
-
   Future<Uint8List> _buildPdf() async {
     final pdf = pw.Document();
 
@@ -91,39 +81,26 @@ class _PdfExportScreenState extends State<PdfExportScreen> {
         pageFormat: PdfPageFormat.a4,
         build: (_) => [
           _pdfHeader(),
-
           if (customers.isNotEmpty)
             _summarySection(customers, leads, tasks),
-
           if (customers.isNotEmpty) ...[
             _sectionTitle('Customers'),
             _customerTable(customers),
           ],
-
           if (leads.isNotEmpty) ...[
             _sectionTitle('Leads'),
             _leadTable(leads),
           ],
-
           if (tasks.isNotEmpty) ...[
             _sectionTitle('Tasks'),
             _taskTable(tasks),
           ],
         ],
-        footer: (context) => pw.Align(
-          alignment: pw.Alignment.centerRight,
-          child: pw.Text(
-            'Page ${context.pageNumber} of ${context.pagesCount}',
-            style: pw.TextStyle(fontSize: 10),
-          ),
-        ),
       ),
     );
 
     return pdf.save();
   }
-
-  // ================= PDF WIDGETS =================
 
   pw.Widget _pdfHeader() => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -153,14 +130,7 @@ class _PdfExportScreenState extends State<PdfExportScreen> {
         ),
       );
 
-  pw.Widget _summarySection(
-    List customers,
-    List leads,
-    List tasks,
-  ) {
-    final won = leads.where((l) => l['status'] == 'Won').length;
-    final lost = leads.where((l) => l['status'] == 'Lost').length;
-
+  pw.Widget _summarySection(List customers, List leads, List tasks) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(10),
       margin: const pw.EdgeInsets.only(bottom: 20),
@@ -173,113 +143,71 @@ class _PdfExportScreenState extends State<PdfExportScreen> {
           pw.SizedBox(height: 8),
           pw.Text('Total Customers: ${customers.length}'),
           pw.Text('Total Leads: ${leads.length}'),
-          pw.Text('Won Leads: $won'),
-          pw.Text('Lost Leads: $lost'),
           pw.Text('Total Tasks: ${tasks.length}'),
         ],
       ),
     );
   }
 
-  pw.Widget _customerTable(List customers) {
-    return pw.Table.fromTextArray(
-      headers: ['Name', 'Email', 'Phone', 'City', 'Status'],
-      data: customers
-          .map((c) => [
-                c['name'] ?? '',
-                c['email'] ?? '',
-                c['phone'] ?? '',
-                c['city'] ?? '',
-                c['status'] ?? '',
-              ])
-          .toList(),
-    );
-  }
+  pw.Widget _customerTable(List customers) =>
+      pw.Table.fromTextArray(
+        headers: ['Name', 'Email', 'Phone', 'City', 'Status'],
+        data: customers.map((c) => [
+              c['name'] ?? '',
+              c['email'] ?? '',
+              c['phone'] ?? '',
+              c['city'] ?? '',
+              c['status'] ?? '',
+            ]).toList(),
+      );
 
-  pw.Widget _leadTable(List leads) {
-    return pw.Table.fromTextArray(
-      headers: ['Name', 'Company', 'Email', 'Status'],
-      data: leads
-          .map((l) => [
-                l['name'] ?? '',
-                l['company'] ?? '',
-                l['email'] ?? '',
-                l['status'] ?? '',
-              ])
-          .toList(),
-    );
-  }
+  pw.Widget _leadTable(List leads) =>
+      pw.Table.fromTextArray(
+        headers: ['Name', 'Company', 'Email', 'Status'],
+        data: leads.map((l) => [
+              l['name'] ?? '',
+              l['company'] ?? '',
+              l['email'] ?? '',
+              l['status'] ?? '',
+            ]).toList(),
+      );
 
-  pw.Widget _taskTable(List tasks) {
-    return pw.Table.fromTextArray(
-      headers: ['Title', 'Status', 'Priority', 'Due Date'],
-      data: tasks.map((t) {
-        final due = t['dueDate'] is Timestamp
-            ? DateFormat('dd MMM yyyy')
-                .format((t['dueDate'] as Timestamp).toDate())
-            : '';
-        return [
-          t['title'] ?? '',
-          t['status'] ?? '',
-          t['priority'] ?? '',
-          due,
-        ];
-      }).toList(),
-    );
-  }
-
-  // ================= ACTIONS =================
+  pw.Widget _taskTable(List tasks) =>
+      pw.Table.fromTextArray(
+        headers: ['Title', 'Status', 'Priority', 'Due Date'],
+        data: tasks.map((t) {
+          final due = t['dueDate'] is Timestamp
+              ? DateFormat('dd MMM yyyy')
+                  .format((t['dueDate'] as Timestamp).toDate())
+              : '';
+          return [
+            t['title'] ?? '',
+            t['status'] ?? '',
+            t['priority'] ?? '',
+            due,
+          ];
+        }).toList(),
+      );
 
   Future<void> _previewPdf() async {
     final pdfData = await _buildPdf();
-    await Printing.layoutPdf(onLayout: (format) async => pdfData);
+    await Printing.layoutPdf(onLayout: (_) async => pdfData);
   }
 
   Future<void> _downloadPdf() async {
-  final pdfData = await _buildPdf();
-
-  late Directory directory;
-
-  if (Platform.isAndroid) {
-    // ✅ ANDROID → Public Downloads folder
-    directory = Directory('/storage/emulated/0/Download');
-  } else if (Platform.isIOS) {
-    // ❗ iOS does NOT allow access to Downloads
-    directory = await getApplicationDocumentsDirectory();
-  } else {
-    // ✅ Desktop (Windows / macOS / Linux)
-    directory = await getDownloadsDirectory() ??
+    final pdfData = await _buildPdf();
+    final dir = await getDownloadsDirectory() ??
         await getApplicationDocumentsDirectory();
+
+    final file = File(
+        '${dir.path}/CRM_Report_${DateTime.now().millisecondsSinceEpoch}.pdf');
+    await file.writeAsBytes(pdfData);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('PDF saved to ${dir.path}')),
+    );
   }
-
-  final fileName =
-      'CRM_Report_${DateTime.now().millisecondsSinceEpoch}.pdf';
-  final file = File('${directory.path}/$fileName');
-
-  await file.writeAsBytes(pdfData);
-
-  // ✅ Success message
-  if (!mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        Platform.isIOS
-            ? 'PDF saved inside app documents'
-            : 'PDF saved to Downloads',
-      ),
-      action: SnackBarAction(
-        label: 'Open',
-        onPressed: () => Printing.sharePdf(
-          bytes: pdfData,
-          filename: fileName,
-        ),
-      ),
-    ),
-  );
-}
-
-
-  // ================= UI =================
 
   @override
   Widget build(BuildContext context) {
@@ -296,10 +224,6 @@ class _PdfExportScreenState extends State<PdfExportScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -343,8 +267,10 @@ class _PdfExportScreenState extends State<PdfExportScreen> {
     );
   }
 
+  // ✅ FIXED HERE — NO Expanded
   List<Widget> _dateButtons() => [
-        Expanded(
+        SizedBox(
+          width: double.infinity,
           child: OutlinedButton(
             onPressed: () => _pickDate(true),
             child: Text(
@@ -354,8 +280,9 @@ class _PdfExportScreenState extends State<PdfExportScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 12, height: 12),
-        Expanded(
+        const SizedBox(height: 12, width: 12),
+        SizedBox(
+          width: double.infinity,
           child: OutlinedButton(
             onPressed: () => _pickDate(false),
             child: Text(

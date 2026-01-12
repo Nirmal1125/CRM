@@ -5,16 +5,19 @@ class Customer {
   final String name;
   final String phone;
   final String email;
+  final String company; // ✅ ADDED
   final String status;
   final String city;
   final String orders;
   final String amountSpent;
   final DateTime createdAt;
+
   Customer({
     required this.id,
     required this.name,
     required this.phone,
     required this.email,
+    required this.company, // ✅ ADDED
     required this.status,
     required this.city,
     required this.orders,
@@ -30,11 +33,13 @@ class Customer {
       name: data['name'] ?? '',
       phone: data['phone'] ?? '',
       email: data['email'] ?? '',
+      company: data['company'] ?? '', // ✅ ADDED
       status: data['status'] ?? '',
       city: data['city'] ?? '',
-      orders: data['orders'] ?? '',
-      amountSpent: data['amountSpent'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp?)!.toDate(),
+      orders: data['orders'] ?? '0',
+      amountSpent: data['amountSpent'] ?? '0',
+      createdAt:
+          (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 }
