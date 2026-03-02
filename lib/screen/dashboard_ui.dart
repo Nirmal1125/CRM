@@ -1,7 +1,7 @@
+import 'package:crm/provider/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-
 import '../models/task.dart';
 import '../provider/dashboard_provider.dart';
 import '../screens/pdf_export_screen.dart';
@@ -187,6 +187,8 @@ class _DashboardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>(); // ✅ ADD
+
     return Consumer<DashboardProvider>(
       builder: (_, p, __) {
         return SingleChildScrollView(
@@ -194,19 +196,23 @@ class _DashboardContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _DashboardGrid(isWide: isWide),
-              const SizedBox(height: 32),
-              _ReminderList(
-               title: "Today's Follow-ups",
-                tasks: p.todayTasks,
-                filter: TaskFilter.today,
-              ),
-                const SizedBox(height: 32),
-             _ReminderList(
-                     title: "Overdue Tasks",
-                     tasks: p.overdueTasks,
-                      filter: TaskFilter.overdue,
-             ),
 
+              // ================= REMINDERS =================
+              if (settings.taskReminders) ...[
+                const SizedBox(height: 32),
+                _ReminderList(
+                  title: "Today's Follow-ups",
+                  tasks: p.todayTasks,
+                  filter: TaskFilter.today,
+                ),
+
+                const SizedBox(height: 32),
+                _ReminderList(
+                  title: "Overdue Tasks",
+                  tasks: p.overdueTasks,
+                  filter: TaskFilter.overdue,
+                ),
+              ],
             ],
           ),
         );

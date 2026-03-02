@@ -46,6 +46,14 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               : args['relatedType'];
       _relatedId = args['relatedId'];
       _isEdit = true;
+
+      if (_dueDate != null) {
+  _dueTime = TimeOfDay(
+    hour: _dueDate!.hour,
+    minute: _dueDate!.minute,
+  );
+}
+
     }
   }
 
@@ -68,7 +76,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
   Future<void> _pickTime() async {
     final picked =
-        await showTimePicker(context: context, initialTime: TimeOfDay.now());
+        await showTimePicker(context: context, initialTime: _dueTime ?? TimeOfDay.now(),
+);
     if (picked != null) setState(() => _dueTime = picked);
   }
 
@@ -77,7 +86,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
     DateTime? finalDueDate;
     if (_dueDate != null) {
-      final time = _dueTime ?? const TimeOfDay(hour: 9, minute: 0);
+      final time = _dueTime ??
+    TimeOfDay(
+      hour: _dueDate!.hour,
+      minute: _dueDate!.minute,
+    );
+
       finalDueDate = DateTime(
         _dueDate!.year,
         _dueDate!.month,
@@ -112,7 +126,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       );
     }
 
-    if (mounted) Navigator.pop(context);
+    Navigator.of(context).pop(true);
+
+
   }
 
   InputDecoration _fieldDecoration(BuildContext context, String label) {

@@ -136,7 +136,8 @@ class _AddLeadScreenState extends State<AddLeadScreen> {
       await provider.updateLead(_leadId!, data);
     }
 
-    if (mounted) Navigator.pop(context);
+    if (mounted) Navigator.pop(context, true);
+
   }
 
   @override

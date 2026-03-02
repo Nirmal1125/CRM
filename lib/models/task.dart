@@ -11,8 +11,11 @@ class Task {
   final String relatedId;
   final String ownerId;
 
-  // 🔔 REMINDER (NEW – REQUIRED FOR EDIT REMINDER TIME)
+  // 🔔 REMINDER
   final int reminderMinutes;
+
+  // 🕒 CREATED TIME (NEW)
+  final DateTime? createdAt;
 
   Task({
     required this.id,
@@ -24,7 +27,8 @@ class Task {
     this.relatedType = '',
     this.relatedId = '',
     this.ownerId = '',
-    this.reminderMinutes = 30, // ✅ DEFAULT (SAFE FOR OLD TASKS)
+    this.reminderMinutes = 30,
+    this.createdAt,
   });
 
   factory Task.fromDoc(DocumentSnapshot doc) {
@@ -40,23 +44,34 @@ class Task {
       relatedType: data['relatedType'] ?? '',
       relatedId: data['relatedId'] ?? '',
       ownerId: data['ownerId'] ?? '',
-      reminderMinutes: data['reminderMinutes'] ?? 30, // ✅ NEW
+      reminderMinutes: data['reminderMinutes'] ?? 30,
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'title': title,
-      'description': description,
-      'dueDate': dueDate != null ? Timestamp.fromDate(dueDate!) : null,
-      'status': status,
-      'priority': priority,
-      'relatedType': relatedType,
-      'relatedId': relatedId,
-      'ownerId': ownerId,
-      'reminderMinutes': reminderMinutes, // ✅ NEW
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
+  Task copyWith({
+    String? title,
+    String? description,
+    DateTime? dueDate,
+    String? priority,
+    String? status,
+    String? relatedType,
+    String? relatedId,
+    int? reminderMinutes,
+  }) {
+    return Task(
+      id: id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      dueDate: dueDate ?? this.dueDate,
+      status: status ?? this.status,
+      priority: priority ?? this.priority,
+      relatedType: relatedType ?? this.relatedType,
+      relatedId: relatedId ?? this.relatedId,
+      ownerId: ownerId,
+      reminderMinutes: reminderMinutes ?? this.reminderMinutes,
+      createdAt: createdAt,
+    );
   }
 }

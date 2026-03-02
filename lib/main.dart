@@ -102,15 +102,32 @@ ThemeData _buildDarkTheme() {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => SettingsProvider()),
-        ChangeNotifierProvider(create: (_) => DashboardProvider()),
-        ChangeNotifierProvider(create: (_) => TaskProvider()),
-        ChangeNotifierProvider(create: (_) => LeadProvider()),
-        ChangeNotifierProvider(create: (_) => CustomerProvider()),
-      ],
-      child: Consumer<SettingsProvider>(
+  providers: [
+    ChangeNotifierProvider(create: (_) => AuthProvider()),
+    ChangeNotifierProvider(create: (_) => SettingsProvider()),
+    ChangeNotifierProvider(create: (_) => TaskProvider()),
+    ChangeNotifierProvider(create: (_) => LeadProvider()),
+    ChangeNotifierProvider(create: (_) => CustomerProvider()),
+
+    ChangeNotifierProxyProvider3<
+        TaskProvider,
+        LeadProvider,
+        CustomerProvider,
+        DashboardProvider>(
+      create: (context) => DashboardProvider(
+        taskProvider: context.read<TaskProvider>(),
+        leadProvider: context.read<LeadProvider>(),
+        customerProvider: context.read<CustomerProvider>(),
+      ),
+      update: (_, task, lead, customer, __) =>
+          DashboardProvider(
+            taskProvider: task,
+            leadProvider: lead,
+            customerProvider: customer,
+          ),
+    ),
+  ],
+  child: Consumer<SettingsProvider>(
         builder: (context, settings, _) {
           return MaterialApp(
             title: 'CRM',

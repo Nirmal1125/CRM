@@ -3,7 +3,7 @@ import '../models/task.dart';
 
 class TaskCard extends StatelessWidget {
   final Task task;
-  final VoidCallback onComplete;
+  final VoidCallback? onComplete;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
 
@@ -185,22 +185,38 @@ class TaskCard extends StatelessWidget {
 
                 const SizedBox(height: 8),
 
-                PopupMenuButton<String>(
-                  onSelected: (v) {
-                    if (v == 'edit') onEdit();
-                    if (v == 'delete') onDelete();
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Text(
-                        'Delete',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ],
-                ),
+               PopupMenuButton<String>(
+  onSelected: (v) {
+    if (v == 'edit' && task.status != 'Completed') {
+      onEdit();
+    }
+    if (v == 'delete') {
+      onDelete();
+    }
+  },
+  itemBuilder: (_) => [
+    PopupMenuItem(
+      value: 'edit',
+      enabled: task.status != 'Completed', // ✅ disable edit
+      child: Text(
+        'Edit',
+        style: TextStyle(
+          color: task.status == 'Completed'
+              ? Colors.grey
+              : Colors.black,
+        ),
+      ),
+    ),
+    const PopupMenuItem(
+      value: 'delete',
+      child: Text(
+        'Delete',
+        style: TextStyle(color: Colors.red),
+      ),
+    ),
+  ],
+),
+
               ],
             ),
           ],

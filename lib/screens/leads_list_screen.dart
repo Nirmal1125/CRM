@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/lead.dart';
 import '../provider/lead_provider.dart';
 import '../widgets/lead_card.dart';
 import '../utils/app_scroll_behavior.dart';
@@ -154,12 +153,22 @@ class _LeadsListScreenState extends State<LeadsListScreen> {
                                 return LeadCard(
                                   lead: lead,
                                   onEdit: lead.status == 'Converted'
-                                      ? null
-                                      : () => Navigator.pushNamed(
-                                            context,
-                                            '/add-lead',
-                                            arguments: lead.toMap(),
-                                          ),
+    ? null
+    : () async {
+        final result = await Navigator.pushNamed(
+          context,
+          '/add-lead',
+          arguments: {
+            'leadId': lead.id, // ✅ CRITICAL FIX
+            ...lead.toMap(),
+          },
+        );
+
+        if (result == true && mounted) {
+          setState(() {}); // optional, Provider already updates
+        }
+      },
+
                                   onDelete: () =>
                                       provider.deleteLead(lead.id),
                                   onConvert: lead.status == 'Converted'

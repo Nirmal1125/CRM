@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // ✅ ADDED
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -42,11 +43,20 @@ class _PdfExportScreenState extends State<PdfExportScreen> {
     });
   }
 
+  // ✅ MODIFIED HERE (User-based filtering added)
   Future<List<Map<String, dynamic>>> _fetchCollection(
     String collection,
     String dateField,
   ) async {
-    Query query = FirebaseFirestore.instance.collection(collection);
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return [];
+    }
+
+    Query query = FirebaseFirestore.instance
+        .collection(collection)
+        .where('userId', isEqualTo: user.uid); // ✅ FILTER BY LOGGED USER
 
     if (startDate != null) {
       query = query.where(
@@ -267,7 +277,6 @@ class _PdfExportScreenState extends State<PdfExportScreen> {
     );
   }
 
-  // ✅ FIXED HERE — NO Expanded
   List<Widget> _dateButtons() => [
         SizedBox(
           width: double.infinity,

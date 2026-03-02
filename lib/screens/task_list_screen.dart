@@ -101,8 +101,11 @@ class _TasksListScreenState extends State<TasksListScreen> {
                   children: [
                     Text('Tasks', style: theme.textTheme.headlineMedium),
                     ElevatedButton.icon(
-                      onPressed: () =>
-                          Navigator.pushNamed(context, '/add-task'),
+                     onPressed: () async {
+  await Navigator.pushNamed(context, '/add-task');
+
+},
+
                       icon: const Icon(Icons.add),
                       label: const Text('Add Task'),
                     ),
@@ -170,9 +173,9 @@ class _TasksListScreenState extends State<TasksListScreen> {
                           return TaskCard(
                             task: task,
                             onComplete: task.status == 'Completed'
-                                ? () {}
-                                : () =>
-                                    provider.markCompleted(task.id),
+    ? null
+    : () => provider.markCompleted(task.id),
+
                             onDelete: () =>
                                 provider.deleteTask(task.id),
                             onEdit: () {
